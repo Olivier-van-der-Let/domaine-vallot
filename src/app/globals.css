@@ -1,0 +1,498 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Original shadcn/ui variables */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 94%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+
+    /* Heritage color system - Domaine Vallot */
+    --heritage-primary: 8 15% 46%;        /* Vinsobres Rouge (#7B2423) */
+    --heritage-secondary: 84 9% 38%;      /* Olive Leaf (#626E5A) */
+    --heritage-accent: 36 35% 58%;        /* Golden Hour (#C89F5E) */
+    --heritage-background: 35 25% 89%;    /* Limestone Clay (#EAE3D6) */
+    --heritage-foreground: 0 0% 25%;      /* Wet Slate (#414141) */
+    --heritage-muted: 35 15% 75%;         /* Lighter limestone for muted elements */
+    --heritage-border: 35 15% 80%;        /* Subtle limestone border */
+
+    /* Default to heritage theme */
+    --background: var(--heritage-background);
+    --foreground: var(--heritage-foreground);
+    --primary: var(--heritage-primary);
+    --primary-foreground: var(--heritage-background);
+    --secondary: var(--heritage-secondary);
+    --secondary-foreground: var(--heritage-background);
+    --accent: var(--heritage-accent);
+    --accent-foreground: var(--heritage-foreground);
+    --muted: var(--heritage-muted);
+    --muted-foreground: var(--heritage-foreground);
+    --border: var(--heritage-border);
+    --input: var(--heritage-border);
+    --ring: var(--heritage-accent);
+  }
+
+  .dark {
+    /* Original dark mode variables */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.4 71.8% 29.2%;
+
+    /* Heritage dark mode - cellar-inspired */
+    --heritage-primary: 8 40% 55%;        /* Lighter rouge for contrast */
+    --heritage-secondary: 84 15% 50%;     /* Olive with better contrast */
+    --heritage-accent: 36 45% 65%;        /* Brighter golden for visibility */
+    --heritage-background: 0 0% 15%;      /* Deep slate background */
+    --heritage-foreground: 35 25% 85%;   /* Light limestone for text */
+    --heritage-muted: 0 0% 25%;           /* Muted slate */
+    --heritage-border: 0 0% 30%;          /* Slate border */
+
+    /* Apply heritage dark theme */
+    --background: var(--heritage-background);
+    --foreground: var(--heritage-foreground);
+    --primary: var(--heritage-primary);
+    --primary-foreground: var(--heritage-background);
+    --secondary: var(--heritage-secondary);
+    --secondary-foreground: var(--heritage-background);
+    --accent: var(--heritage-accent);
+    --accent-foreground: var(--heritage-background);
+    --muted: var(--heritage-muted);
+    --muted-foreground: var(--heritage-foreground);
+    --border: var(--heritage-border);
+    --input: var(--heritage-border);
+    --ring: var(--heritage-accent);
+  }
+
+  /* Heritage theme variants */
+  .theme-heritage {
+    --background: var(--heritage-background);
+    --foreground: var(--heritage-foreground);
+    --primary: var(--heritage-primary);
+    --primary-foreground: var(--heritage-background);
+    --secondary: var(--heritage-secondary);
+    --secondary-foreground: var(--heritage-background);
+    --accent: var(--heritage-accent);
+    --accent-foreground: var(--heritage-foreground);
+    --muted: var(--heritage-muted);
+    --muted-foreground: var(--heritage-foreground);
+    --border: var(--heritage-border);
+    --input: var(--heritage-border);
+    --ring: var(--heritage-accent);
+  }
+
+  /* Original theme option for backward compatibility */
+  .theme-original {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 94%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Accessibility improvements */
+@layer utilities {
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Focus indicators - updated for heritage colors */
+  .focus-visible:focus-visible {
+    @apply outline-2 outline-offset-2 outline-heritage-rouge-700;
+  }
+
+  /* Heritage-specific focus states */
+  .heritage-focus:focus-visible {
+    @apply ring-2 ring-heritage-accent ring-offset-2 ring-offset-heritage-background;
+  }
+
+  /* Enhanced focus management - no artifacts with transforms */
+  .heritage-logo-focus:focus-visible {
+    @apply ring-2 ring-heritage-golden ring-opacity-50;
+    /* Remove ring-offset to prevent artifacts with transforms */
+    box-shadow: 0 0 0 2px rgba(200, 159, 94, 0.5);
+  }
+
+  /* Button focus without persistent borders */
+  .heritage-button-focus:focus-visible {
+    @apply ring-2 ring-heritage-golden ring-opacity-50;
+    outline: none;
+  }
+
+  /* Remove default browser focus for styled elements */
+  .heritage-styled:focus {
+    outline: none;
+  }
+
+  /* High contrast mode */
+  .high-contrast {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --border: 0 0% 0%;
+  }
+
+  .high-contrast .text-gray-500 {
+    @apply text-black;
+  }
+
+  .high-contrast .bg-gray-50 {
+    @apply bg-white;
+  }
+
+  .high-contrast .border-gray-200 {
+    @apply border-black;
+  }
+
+  /* Reduced motion */
+  .reduce-motion *,
+  .reduce-motion *::before,
+  .reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Skip links */
+  .skip-link {
+    transform: translateY(-100%);
+    transition: transform 0.3s;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0%);
+  }
+
+  /* Focus management */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* Ensure sufficient color contrast - now handled by Tailwind config */
+
+  /* Touch targets - minimum 44px */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Heritage accessibility improvements */
+  .heritage-focus:focus-visible {
+    @apply ring-2 ring-heritage-accent ring-offset-2 ring-offset-heritage-background;
+  }
+
+  /* Prevent focus artifacts on interactive elements */
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* Form improvements */
+  input:invalid {
+    @apply border-red-500;
+  }
+
+  input:invalid:focus {
+    @apply ring-red-500;
+  }
+
+  /* Error states */
+  [aria-invalid="true"] {
+    @apply border-red-500;
+  }
+
+  [role="alert"] {
+    @apply text-red-600;
+  }
+
+  /* Loading states */
+  [aria-busy="true"] {
+    cursor: wait;
+  }
+
+  /* Interactive elements */
+  [role="button"]:hover,
+  [role="button"]:focus-visible {
+    @apply bg-gray-100;
+  }
+
+  /* Ensure buttons lose focus after click */
+  button:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Tooltip positioning */
+  [role="tooltip"] {
+    position: absolute;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    max-width: 250px;
+  }
+
+  /* Dialog/Modal improvements */
+  [role="dialog"] {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  [role="dialog"]::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Menu improvements */
+  [role="menu"] {
+    @apply bg-white border border-gray-200 rounded-lg shadow-lg;
+  }
+
+  [role="menuitem"]:hover,
+  [role="menuitem"]:focus {
+    @apply bg-gray-100;
+  }
+
+  [role="menuitem"][aria-disabled="true"] {
+    @apply text-gray-400 cursor-not-allowed;
+  }
+
+  /* Tab improvements */
+  [role="tablist"] {
+    @apply border-b border-gray-200;
+  }
+
+  [role="tab"] {
+    @apply px-4 py-2 border-b-2 border-transparent;
+  }
+
+  [role="tab"][aria-selected="true"] {
+    @apply border-heritage-rouge text-heritage-rouge;
+  }
+
+  /* Heritage tab states */
+  .heritage-tabs [role="tab"][aria-selected="true"] {
+    @apply border-heritage-accent text-heritage-rouge bg-heritage-limestone/10;
+  }
+
+  .heritage-tabs [role="tab"]:hover:not([aria-selected="true"]) {
+    @apply border-heritage-muted text-heritage-olive;
+  }
+
+  [role="tab"]:hover:not([aria-selected="true"]) {
+    @apply border-gray-300;
+  }
+
+  /* Accordion improvements */
+  [role="button"][aria-expanded="false"] + [role="region"] {
+    display: none;
+  }
+
+  [role="button"][aria-expanded="true"] + [role="region"] {
+    display: block;
+  }
+}
+
+/* Heritage color utilities */
+@layer utilities {
+  .bg-heritage-gradient {
+    background: linear-gradient(135deg, theme('colors.heritage.limestone.DEFAULT') 0%, theme('colors.heritage.limestone.100') 100%);
+  }
+
+  .bg-heritage-gradient-dark {
+    background: linear-gradient(135deg, theme('colors.heritage.slate.800') 0%, theme('colors.heritage.slate.900') 100%);
+  }
+
+  /* Heritage button styles */
+  .btn-heritage-primary {
+    @apply bg-heritage-rouge text-heritage-limestone hover:bg-heritage-rouge-800 focus:ring-heritage-rouge focus:ring-offset-heritage-background transition-colors;
+  }
+
+  .btn-heritage-secondary {
+    @apply bg-heritage-olive text-heritage-limestone hover:bg-heritage-olive-700 focus:ring-heritage-olive focus:ring-offset-heritage-background transition-colors;
+  }
+
+  .btn-heritage-accent {
+    @apply bg-heritage-golden text-heritage-slate hover:bg-heritage-golden-600 focus:ring-heritage-golden focus:ring-offset-heritage-background transition-colors;
+  }
+
+  .btn-heritage-outline {
+    @apply border-2 border-heritage-rouge text-heritage-rouge bg-transparent hover:bg-heritage-rouge hover:text-heritage-limestone focus:ring-heritage-rouge focus:ring-offset-heritage-background transition-colors;
+  }
+
+  /* Heritage card styles */
+  .card-heritage {
+    @apply bg-heritage-limestone border border-heritage-border shadow-sm;
+  }
+
+  .card-heritage-elevated {
+    @apply bg-heritage-limestone border border-heritage-border shadow-lg hover:shadow-xl transition-shadow;
+  }
+
+  /* Heritage link styles */
+  .link-heritage {
+    @apply text-heritage-rouge hover:text-heritage-rouge-700 underline-offset-4 hover:underline transition-colors;
+  }
+
+  .link-heritage-muted {
+    @apply text-heritage-olive hover:text-heritage-rouge transition-colors;
+  }
+
+  /* Heritage touch targets */
+  .heritage-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* High contrast heritage mode */
+  .high-contrast-heritage {
+    --heritage-primary: 8 60% 25%;        /* Darker rouge for better contrast */
+    --heritage-secondary: 84 20% 25%;     /* Darker olive */
+    --heritage-accent: 36 60% 35%;        /* Darker golden */
+    --heritage-background: 0 0% 100%;     /* Pure white background */
+    --heritage-foreground: 0 0% 0%;       /* Pure black text */
+    --heritage-muted: 0 0% 80%;           /* Light grey for muted */
+    --heritage-border: 0 0% 50%;          /* Medium grey border */
+  }
+
+  /* Heritage reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .heritage-animate {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  /* Heritage color scheme preferences */
+  @media (prefers-color-scheme: dark) {
+    .heritage-auto {
+      --heritage-background: 0 0% 15%;
+      --heritage-foreground: 35 25% 85%;
+    }
+  }
+}
+
+/* Print styles for accessibility */
+@media print {
+  .skip-link,
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  a::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+
+  /* Heritage print optimizations */
+  .heritage-print-hide {
+    display: none !important;
+  }
+
+  .heritage-print-show {
+    display: block !important;
+  }
+
+  /* Ensure heritage colors print well */
+  .bg-heritage-rouge,
+  .text-heritage-rouge {
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  .bg-heritage-limestone {
+    background: #fff !important;
+  }
+}
