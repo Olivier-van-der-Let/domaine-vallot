@@ -27,7 +27,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'Mars - Mai',
       description: 'Le réveil du vignoble. Les bourgeons éclatent, la sève monte, et nos vignes biodynamiques s\'éveillent selon les rythmes lunaires. C\'est le moment du débourrement et de la sortie des premières feuilles.',
       activities: ['Taille de printemps', 'Labour des sols', 'Plantation selon le calendrier lunaire', 'Préparations biodynamiques'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-spring.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/spring.jpg',
       color: 'heritage-olive-500'
     },
     {
@@ -36,7 +36,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'Juin - Août',
       description: 'L\'épanouissement. Les vignes se développent sous le soleil méditerranéen, les grappes se forment. Nos terroirs calcaires emmagasinent la chaleur du jour et la restituent la nuit.',
       activities: ['Rognage et effeuillage', 'Traitements biodynamiques', 'Surveillance de la véraison', 'Travail du sol en surface'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-summer.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/summer.jpg',
       color: 'heritage-golden-500'
     },
     {
@@ -45,7 +45,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'Septembre - Novembre',
       description: 'Les vendanges et la transformation. Moment crucial où le terroir s\'exprime pleinement dans les raisins. Chaque parcelle est récoltée à maturité optimale selon nos observations biodynamiques.',
       activities: ['Vendanges manuelles', 'Vinification parcellaire', 'Fermentation naturelle', 'Début de l\'élevage'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-autumn.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/autumn.jpg',
       color: 'heritage-rouge-600'
     },
     {
@@ -54,7 +54,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'Décembre - Février',
       description: 'Le repos et la réflexion. Les vignes entrent en dormance, nous préparons les amendements biodynamiques et planifions la nouvelle année viticole en harmonie avec les cycles naturels.',
       activities: ['Taille d\'hiver', 'Préparation du compost', 'Analyse des sols', 'Planification biodynamique'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-winter.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/winter.jpg',
       color: 'heritage-slate-600'
     }
   ] : [
@@ -64,7 +64,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'March - May',
       description: 'The vineyard awakens. Buds burst, sap rises, and our biodynamic vines awaken according to lunar rhythms. This is the time of bud break and the emergence of the first leaves.',
       activities: ['Spring pruning', 'Soil cultivation', 'Planting according to lunar calendar', 'Biodynamic preparations'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-spring.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/spring.jpg',
       color: 'heritage-olive-500'
     },
     {
@@ -73,7 +73,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'June - August',
       description: 'The blooming. Vines develop under the Mediterranean sun, clusters form. Our limestone terroirs store the heat of the day and release it at night.',
       activities: ['Topping and leaf removal', 'Biodynamic treatments', 'Veraison monitoring', 'Surface soil work'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-summer.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/summer.jpg',
       color: 'heritage-golden-500'
     },
     {
@@ -82,7 +82,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'September - November',
       description: 'Harvest and transformation. The crucial moment when terroir fully expresses itself in the grapes. Each plot is harvested at optimal maturity according to our biodynamic observations.',
       activities: ['Manual harvest', 'Plot-by-plot vinification', 'Natural fermentation', 'Beginning of aging'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-autumn.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/autumn.jpg',
       color: 'heritage-rouge-600'
     },
     {
@@ -91,7 +91,7 @@ export default function LivingVineyardExperience({ locale }: LivingVineyardExper
       period: 'December - February',
       description: 'Rest and reflection. Vines enter dormancy, we prepare biodynamic amendments and plan the new wine year in harmony with natural cycles.',
       activities: ['Winter pruning', 'Compost preparation', 'Soil analysis', 'Biodynamic planning'],
-      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vineyard-winter.jpg',
+      image: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/winter.jpg',
       color: 'heritage-slate-600'
     }
   ]
