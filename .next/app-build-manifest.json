@@ -1,5 +1,10 @@
 {
   "pages": {
+    "/api/products/[slug]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/products/[slug]/route.js"
+    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -31,10 +36,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[locale]/products/[slug]/page.js"
     ],
-    "/api/products/[slug]/route": [
+    "/api/auth/login/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/products/[slug]/route.js"
+      "static/chunks/app/api/auth/login/route.js"
     ]
   }
 }
