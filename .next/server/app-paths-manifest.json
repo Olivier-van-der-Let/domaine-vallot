@@ -1,0 +1,5 @@
+{
+  "/[locale]/page": "app/[locale]/page.js",
+  "/[locale]/products/page": "app/[locale]/products/page.js",
+  "/[locale]/products/[slug]/page": "app/[locale]/products/[slug]/page.js"
+}

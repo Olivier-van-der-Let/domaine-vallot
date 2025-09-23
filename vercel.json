@@ -1,0 +1,95 @@
+{
+  "version": 2,
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
+      "NEXT_PUBLIC_SITE_URL": "@next_public_site_url"
+    }
+  },
+  "env": {
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "MOLLIE_API_KEY": "@mollie_api_key",
+    "SENDCLOUD_API_KEY": "@sendcloud_api_key",
+    "SENDCLOUD_API_SECRET": "@sendcloud_api_secret",
+    "RESEND_API_KEY": "@resend_api_key",
+    "META_ACCESS_TOKEN": "@meta_access_token",
+    "META_CATALOG_ID": "@meta_catalog_id",
+    "GOOGLE_MERCHANT_ID": "@google_merchant_id",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "NEXTAUTH_URL": "@nextauth_url",
+    "ENCRYPTION_KEY": "@encryption_key"
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://domaine-vallot.com"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/fr/admin",
+      "permanent": false
+    },
+    {
+      "source": "/products",
+      "destination": "/fr/products",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
+    }
+  ]
+}

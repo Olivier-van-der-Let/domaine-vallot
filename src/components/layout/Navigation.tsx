@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import LanguageSwitch from '../ui/LanguageSwitch'
 import { useAuthModal } from '../auth/AuthModal'
+import { useAuth } from '../auth/AuthProvider'
 import { DomaineVallotLogo } from '../ui/DomaineVallotLogo'
 import { useScrollHeader } from '@/hooks/useScrollHeader'
 import { cn } from '@/lib/utils'
@@ -12,19 +13,20 @@ import { cn } from '@/lib/utils'
 interface NavigationProps {
   currentLocale?: string
   cartItemCount?: number
-  isAuthenticated?: boolean
-  userName?: string
 }
 
 export default function Navigation({
   currentLocale = 'en',
-  cartItemCount = 0,
-  isAuthenticated = false,
-  userName
+  cartItemCount = 0
 }: NavigationProps) {
+  const { user, signOut, loading, isAdmin } = useAuth()
+  const isAuthenticated = !!user
+  const userName = user?.email?.split('@')[0] || ''
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { isScrolled, isVisible, scrollDirection } = useScrollHeader({
     threshold: 50,
@@ -39,12 +41,23 @@ export default function Navigation({
     return pathname.startsWith(href)
   }
 
-  // Handle escape key to close mobile menu
+  // Handle escape key to close mobile menu and user menu
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false)
-        mobileMenuButtonRef.current?.focus()
+      if (e.key === 'Escape') {
+        if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false)
+          mobileMenuButtonRef.current?.focus()
+        }
+        if (userMenuOpen) {
+          setUserMenuOpen(false)
+        }
+      }
+    }
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
       }
     }
 
@@ -57,14 +70,29 @@ export default function Navigation({
       }
     }
 
+    if (userMenuOpen) {
+      document.addEventListener('keydown', handleEscape)
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
     return () => {
       document.removeEventListener('keydown', handleEscape)
+      document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isMobileMenuOpen])
+  }, [isMobileMenuOpen, userMenuOpen])
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
     mobileMenuButtonRef.current?.focus()
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      setUserMenuOpen(false)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   // Helper function to format cart count
@@ -152,21 +180,66 @@ export default function Navigation({
               {/* Account Menu */}
               <div className="relative" data-testid="account-menu">
                 {isAuthenticated ? (
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm text-heritage-slate font-medium">Hello, {userName}</span>
-                    <Link
-                      href={`/${currentLocale}/account`}
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
                       className={cn(
-                        "flex items-center justify-center w-10 h-10 rounded-full",
+                        "flex items-center space-x-2 px-3 py-2 rounded-md",
                         "text-heritage-slate hover:text-heritage-rouge hover:bg-heritage-limestone-100/50",
                         "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-heritage-golden/50 focus:ring-offset-2"
                       )}
-                      aria-label="Go to account"
+                      aria-label="User menu"
+                      aria-expanded={userMenuOpen}
                     >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <span className="text-sm font-medium">
+                        Hello, {userName}
+                        {isAdmin && <span className="ml-1 text-amber-600 text-xs">👑</span>}
+                      </span>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </Link>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {userMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                        <div className="py-1">
+                          {isAdmin && (
+                            <>
+                              <Link
+                                href={`/${currentLocale}/admin`}
+                                className="block px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors font-medium"
+                                onClick={() => setUserMenuOpen(false)}
+                              >
+                                🔧 {currentLocale === 'fr' ? 'Administration' : 'Admin Panel'}
+                              </Link>
+                              <hr className="my-1" />
+                            </>
+                          )}
+                          <Link
+                            href={`/${currentLocale}/account`}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            {currentLocale === 'fr' ? 'Mon Compte' : 'My Account'}
+                          </Link>
+                          <Link
+                            href={`/${currentLocale}/orders`}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            {currentLocale === 'fr' ? 'Mes Commandes' : 'My Orders'}
+                          </Link>
+                          <hr className="my-1" />
+                          <button
+                            onClick={handleLogout}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            {currentLocale === 'fr' ? 'Déconnexion' : 'Logout'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <LoginButton locale={currentLocale} />

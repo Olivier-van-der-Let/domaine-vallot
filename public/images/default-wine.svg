@@ -1,0 +1,7 @@
+<svg width="300" height="400" viewBox="0 0 300 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="400" fill="#F3F4F6"/>
+  <path d="M120 80h60v240h-60z" fill="#8B5CF6" opacity="0.3"/>
+  <path d="M130 90h40v20h-40z" fill="#8B5CF6" opacity="0.5"/>
+  <circle cx="150" cy="200" r="30" fill="#8B5CF6" opacity="0.2"/>
+  <text x="150" y="350" text-anchor="middle" fill="#6B7280" font-family="Arial" font-size="16">Wine Bottle</text>
+</svg>

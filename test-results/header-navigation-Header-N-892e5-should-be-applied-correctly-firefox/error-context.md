@@ -1,0 +1,71 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "Domaine Vallot - Return to homepage" [ref=e7] [cursor=pointer]:
+          - /url: /en
+          - img "Domaine Vallot" [ref=e8] [cursor=pointer]
+        - navigation [ref=e32]:
+          - generic [ref=e33]:
+            - link "Home" [ref=e34] [cursor=pointer]:
+              - /url: /en
+              - generic [ref=e35] [cursor=pointer]: Home
+            - link "Products" [ref=e36] [cursor=pointer]:
+              - /url: /en/products
+              - generic [ref=e37] [cursor=pointer]: Products
+            - link "About" [ref=e38] [cursor=pointer]:
+              - /url: /en/about
+              - generic [ref=e39] [cursor=pointer]: About
+            - link "Contact" [ref=e40] [cursor=pointer]:
+              - /url: /en/contact
+              - generic [ref=e41] [cursor=pointer]: Contact
+        - generic [ref=e42]:
+          - button "Switch language" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46] [cursor=pointer]: 🇬🇧
+            - generic [ref=e47] [cursor=pointer]: English
+            - img [ref=e48] [cursor=pointer]
+          - generic [ref=e50]:
+            - button "Login" [ref=e52] [cursor=pointer]
+            - link "Shopping cart (empty)" [ref=e53] [cursor=pointer]:
+              - /url: /en/cart
+              - img [ref=e54] [cursor=pointer]
+    - main [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e62]:
+          - heading "Premium Biodynamic Wines" [level=1] [ref=e63]
+          - paragraph [ref=e64]: Discover our exceptional wines, passionately crafted following biodynamic principles from our family vineyard.
+          - generic [ref=e65]:
+            - link "Explore Our Wines" [ref=e66] [cursor=pointer]:
+              - /url: /en/products
+            - link "Our Story" [ref=e67] [cursor=pointer]:
+              - /url: /en/about
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - heading "Featured Wines" [level=2] [ref=e71]
+            - paragraph [ref=e72]: A selection of our finest wines, representing the excellence of our terroir and craftsmanship.
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: No featured products available at the moment.
+            - link "Browse All Wines" [ref=e75] [cursor=pointer]:
+              - /url: /en/products
+        - generic [ref=e77]:
+          - heading "Our Values" [level=2] [ref=e79]
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - img [ref=e83]
+              - heading "Biodynamic Farming" [level=3] [ref=e85]
+              - paragraph [ref=e86]: Our vines are cultivated following strict biodynamic principles, respecting natural cycles.
+            - generic [ref=e87]:
+              - img [ref=e89]
+              - heading "Family Tradition" [level=3] [ref=e91]
+              - paragraph [ref=e92]: Our expertise has been passed down through generations for over 100 years.
+            - generic [ref=e93]:
+              - img [ref=e95]
+              - heading "Exceptional Terroir" [level=3] [ref=e97]
+              - paragraph [ref=e98]: Our vines benefit from a unique terroir that gives our wines their distinctive character.
+    - contentinfo [ref=e99]:
+      - paragraph [ref=e102]: © 2025 Domaine Vallot. All rights reserved.
+  - alert [ref=e103]
+```

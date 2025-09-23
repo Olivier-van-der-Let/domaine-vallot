@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Section Test - Domaine Vallot | Seven Generations of Heritage</title>
+    <meta name="description" content="Experience the terroir and heritage of Domaine Vallot through our biodynamic wines, crafted with seven generations of expertise.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        heritage: {
+                            limestone: {
+                                DEFAULT: '#EAE3D6',
+                                50: '#F8F6F2',
+                                100: '#F2EDE5',
+                                200: '#EAE3D6',
+                                300: '#DDD3C2',
+                                400: '#CFC2AA',
+                                500: '#C0B192',
+                                600: '#A69980',
+                                700: '#8B7F6B',
+                                800: '#6B6253',
+                                900: '#4A443B',
+                            },
+                            rouge: {
+                                DEFAULT: '#7B2423',
+                                50: '#FDF2F2',
+                                100: '#FCE7E7',
+                                200: '#F8CCCC',
+                                300: '#F1A1A1',
+                                400: '#E56868',
+                                500: '#D23838',
+                                600: '#B82F2F',
+                                700: '#7B2423',
+                                800: '#631E1D',
+                                900: '#4A1717',
+                                950: '#2A0D0D',
+                            },
+                            olive: {
+                                DEFAULT: '#626E5A',
+                                50: '#F6F7F5',
+                                100: '#EAECEA',
+                                200: '#D6DAD2',
+                                300: '#BBC3B5',
+                                400: '#9BA690',
+                                500: '#7E8A73',
+                                600: '#626E5A',
+                                700: '#525A4A',
+                                800: '#434A3D',
+                                900: '#363B31',
+                            },
+                            slate: {
+                                DEFAULT: '#414141',
+                                50: '#F8F8F8',
+                                100: '#F1F1F1',
+                                200: '#E4E4E4',
+                                300: '#D1D1D1',
+                                400: '#B4B4B4',
+                                500: '#9A9A9A',
+                                600: '#818181',
+                                700: '#6A6A6A',
+                                800: '#545454',
+                                900: '#414141',
+                                950: '#262626',
+                            },
+                            golden: {
+                                DEFAULT: '#C89F5E',
+                                50: '#FDF9F3',
+                                100: '#FAF2E6',
+                                200: '#F4E3CC',
+                                300: '#EBCFA3',
+                                400: '#DFB675',
+                                500: '#C89F5E',
+                                600: '#B5894A',
+                                700: '#96713C',
+                                800: '#795A2F',
+                                900: '#5C4423',
+                            }
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <!-- Background Image -->
+        <div
+            class="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style="background-image: url('https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/hero-shot(1920x1080).jpg')"
+        >
+            <!-- Overlay for text readability -->
+            <div class="absolute inset-0 bg-gradient-to-b from-heritage-slate-950/60 via-heritage-slate-950/40 to-heritage-slate-950/70"></div>
+        </div>
+
+        <!-- Content -->
+        <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="text-heritage-limestone">
+                <!-- Overline - Heritage Element -->
+                <p class="text-heritage-golden font-serif text-sm md:text-base mb-4 tracking-wider uppercase opacity-90">
+                    Seven Generations of Craftsmanship
+                </p>
+
+                <!-- Main Headline - Emotional Connection -->
+                <h1 class="font-serif text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                    Taste the <span class="text-heritage-golden">Terroir</span>
+                    <br class="hidden sm:block" />
+                    <span class="block text-3xl md:text-4xl lg:text-5xl mt-2 font-normal opacity-90">
+                        Feel the Heritage
+                    </span>
+                </h1>
+
+                <!-- Compelling Narrative -->
+                <p class="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 max-w-3xl mx-auto leading-relaxed opacity-95">
+                    In every bottle, the limestone soil of our biodynamic vines tells the living story of our domain. Here, the vineyard breathes as a single organism, shaped by the hands of seven generations.
+                </p>
+
+                <!-- Call to Action -->
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a
+                        href="#"
+                        class="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 bg-heritage-golden text-heritage-slate font-semibold rounded-md hover:bg-heritage-golden-600 focus:ring-2 focus:ring-heritage-golden focus:ring-offset-2 focus:ring-offset-heritage-slate-950 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full sm:w-auto"
+                        aria-label="Explore our wine collection"
+                    >
+                        Explore Our Wines
+                    </a>
+                    <a
+                        href="#"
+                        class="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 border-2 border-heritage-limestone text-heritage-limestone font-semibold rounded-md hover:bg-heritage-limestone hover:text-heritage-slate focus:ring-2 focus:ring-heritage-limestone focus:ring-offset-2 focus:ring-offset-heritage-slate-950 transition-all duration-200 w-full sm:w-auto"
+                        aria-label="Learn more about our family heritage"
+                    >
+                        Our Heritage
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div
+            class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer"
+            role="button"
+            tabindex="0"
+            aria-label="Scroll down to explore more"
+            onclick="document.querySelector('#next-section')?.scrollIntoView({ behavior: 'smooth' })"
+        >
+            <svg class="w-6 h-6 text-heritage-limestone opacity-70 hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+        </div>
+    </section>
+
+    <!-- Demo Next Section -->
+    <section id="next-section" class="py-16 bg-heritage-limestone">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl md:text-4xl font-serif font-bold text-heritage-rouge mb-6">
+                Heritage Meets Innovation
+            </h2>
+            <p class="text-lg text-heritage-slate mb-8">
+                This demonstrates the new hero section design for Domaine Vallot, capturing the essence of terroir, heritage, and craftsmanship through compelling visuals and authentic storytelling.
+            </p>
+            <div class="grid md:grid-cols-3 gap-8 text-center">
+                <div>
+                    <div class="w-16 h-16 bg-heritage-rouge/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-heritage-rouge" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-heritage-slate mb-2">Biodynamic Farming</h3>
+                    <p class="text-heritage-olive">Respecting natural cycles and the living soil that defines our terroir.</p>
+                </div>
+                <div>
+                    <div class="w-16 h-16 bg-heritage-golden/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-heritage-golden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-heritage-slate mb-2">Seven Generations</h3>
+                    <p class="text-heritage-olive">Family knowledge passed down through generations of dedicated winemakers.</p>
+                </div>
+                <div>
+                    <div class="w-16 h-16 bg-heritage-olive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-heritage-olive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-heritage-slate mb-2">Limestone Terroir</h3>
+                    <p class="text-heritage-olive">Ancient limestone gives our wines their distinctive mineral character.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

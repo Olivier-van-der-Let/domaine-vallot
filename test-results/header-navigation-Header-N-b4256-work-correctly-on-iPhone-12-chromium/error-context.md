@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "Domaine Vallot - Return to homepage" [ref=e7] [cursor=pointer]:
+          - /url: /en
+          - img "Domaine Vallot" [ref=e8] [cursor=pointer]
+        - button "Open menu" [ref=e33] [cursor=pointer]:
+          - img [ref=e34] [cursor=pointer]
+    - main [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e41]:
+          - heading "Premium Biodynamic Wines" [level=1] [ref=e42]
+          - paragraph [ref=e43]: Discover our exceptional wines, passionately crafted following biodynamic principles from our family vineyard.
+          - generic [ref=e44]:
+            - link "Explore Our Wines" [ref=e45] [cursor=pointer]:
+              - /url: /en/products
+            - link "Our Story" [ref=e46] [cursor=pointer]:
+              - /url: /en/about
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - heading "Featured Wines" [level=2] [ref=e50]
+            - paragraph [ref=e51]: A selection of our finest wines, representing the excellence of our terroir and craftsmanship.
+          - generic [ref=e52]:
+            - paragraph [ref=e53]: No featured products available at the moment.
+            - link "Browse All Wines" [ref=e54] [cursor=pointer]:
+              - /url: /en/products
+        - generic [ref=e56]:
+          - heading "Our Values" [level=2] [ref=e58]
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - img [ref=e62]
+              - heading "Biodynamic Farming" [level=3] [ref=e64]
+              - paragraph [ref=e65]: Our vines are cultivated following strict biodynamic principles, respecting natural cycles.
+            - generic [ref=e66]:
+              - img [ref=e68]
+              - heading "Family Tradition" [level=3] [ref=e70]
+              - paragraph [ref=e71]: Our expertise has been passed down through generations for over 100 years.
+            - generic [ref=e72]:
+              - img [ref=e74]
+              - heading "Exceptional Terroir" [level=3] [ref=e76]
+              - paragraph [ref=e77]: Our vines benefit from a unique terroir that gives our wines their distinctive character.
+    - contentinfo [ref=e78]:
+      - paragraph [ref=e81]: © 2025 Domaine Vallot. All rights reserved.
+  - alert [ref=e82]
+```

@@ -1,0 +1,406 @@
+'use client'
+
+import { createContext, useContext, useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { User, Session } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
+import type { Customer } from '@/types'
+
+interface AuthContextType {
+  user: User | null
+  customer: Customer | null
+  session: Session | null
+  loading: boolean
+  isAdmin: boolean
+  signIn: (email: string, password: string) => Promise<{ error?: string }>
+  signUp: (email: string, password: string, metadata?: any) => Promise<{ error?: string }>
+  signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ error?: string }>
+  updatePassword: (password: string) => Promise<{ error?: string }>
+  refreshUser: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+interface AuthProviderProps {
+  children: React.ReactNode
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null)
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const supabase = createClientComponentClient<Database>()
+
+  // Get current session and user data
+  const getSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+
+      if (error) {
+        console.error('Session error:', error)
+        return
+      }
+
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      // Get customer profile if user exists
+      if (session?.user) {
+        await getCustomerProfile(session.user.id)
+        await checkAdminStatus(session.user.id)
+      } else {
+        setCustomer(null)
+        setIsAdmin(false)
+      }
+    } catch (error) {
+      console.error('Session fetch error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Get customer profile from database
+  const getCustomerProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Customer profile error:', error)
+        return
+      }
+
+      if (data) {
+        // Transform database fields to match Customer interface
+        const customerData: Customer = {
+          id: data.id,
+          email: data.email,
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+          phone: data.phone || '',
+          birthDate: data.birth_date || '',
+          preferredLanguage: data.preferred_language || 'en',
+          marketingConsent: data.marketing_consent || false,
+          newsletterConsent: data.newsletter_consent || false,
+          ageVerified: data.age_verified || false,
+          ageVerifiedAt: data.age_verified_at || '',
+          ageVerificationMethod: data.age_verification_method || undefined,
+          isBusiness: data.is_business || false,
+          vatNumber: data.vat_number || '',
+          vatValidated: data.vat_validated || false,
+          vatValidatedAt: data.vat_validated_at || '',
+          companyName: data.company_name || '',
+          totalOrders: data.total_orders || 0,
+          totalSpentEur: data.total_spent_eur || 0,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        }
+
+        setCustomer(customerData)
+      }
+    } catch (error) {
+      console.error('Customer profile fetch error:', error)
+    }
+  }
+
+  // Check if user is admin
+  const checkAdminStatus = async (userId: string) => {
+    try {
+      // Check if user is in admin_users table
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Admin check error:', error)
+        setIsAdmin(false)
+        return
+      }
+
+      // User is admin if found in admin_users table
+      setIsAdmin(!!data)
+    } catch (error) {
+      console.error('Admin status check error:', error)
+      setIsAdmin(false)
+    }
+  }
+
+  // Sign in
+  const signIn = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        return { error: result.error || 'Login failed' }
+      }
+
+      // Refresh the session to get the latest auth state
+      await getSession()
+
+      return {}
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  // Sign up
+  const signUp = async (email: string, password: string, metadata: any = {}) => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          confirmPassword: password, // The API route expects this
+          ...metadata
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        return { error: result.error || 'Registration failed' }
+      }
+
+      // Refresh the session to get the latest auth state
+      await getSession()
+
+      return {}
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  // Sign out
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      setCustomer(null)
+      setSession(null)
+      router.refresh()
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+
+  // Reset password
+  const resetPassword = async (email: string) => {
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        return { error: result.error || 'Password reset failed' }
+      }
+
+      return {}
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  // Update password
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password
+      })
+
+      if (error) {
+        return { error: error.message }
+      }
+
+      return {}
+    } catch (error) {
+      return { error: 'An unexpected error occurred' }
+    }
+  }
+
+  // Refresh user data
+  const refreshUser = async () => {
+    await getSession()
+  }
+
+  // Initialize auth state
+  useEffect(() => {
+    getSession()
+
+    // Listen for auth changes
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, !!session?.user)
+
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        await getCustomerProfile(session.user.id)
+        await checkAdminStatus(session.user.id)
+      } else {
+        setCustomer(null)
+        setIsAdmin(false)
+      }
+
+      // Handle specific auth events
+      if (event === 'SIGNED_OUT') {
+        setCustomer(null)
+        setIsAdmin(false)
+        router.refresh()
+      }
+
+      if (event === 'SIGNED_IN') {
+        // Redirect to intended page or dashboard
+        const redirectTo = new URLSearchParams(window.location.search).get('redirect')
+        if (redirectTo) {
+          router.push(redirectTo)
+        }
+      }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked on password reset link
+        router.push(`/reset-password?token=${session?.access_token}`)
+      }
+
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router, supabase.auth])
+
+  // Protect routes
+  useEffect(() => {
+    if (!loading) {
+      const isAuthRoute = pathname?.includes('/login') ||
+                         pathname?.includes('/register') ||
+                         pathname?.includes('/forgot-password') ||
+                         pathname?.includes('/reset-password')
+
+      const isAdminRoute = pathname?.includes('/admin')
+      const isUserProtectedRoute = pathname?.includes('/profile') ||
+                                  pathname?.includes('/orders')
+
+      // Redirect authenticated users away from auth pages
+      if (user && isAuthRoute) {
+        // If user was trying to access admin and is admin, redirect to admin
+        const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+        if (redirectParam?.includes('/admin') && isAdmin) {
+          router.push(redirectParam)
+        } else {
+          router.push('/')
+        }
+        return
+      }
+
+      // Handle admin route protection
+      if (isAdminRoute) {
+        if (!user) {
+          // Redirect unauthenticated users to login with admin redirect
+          const currentPath = encodeURIComponent(pathname || '/admin')
+          router.push(`/login?redirect=${currentPath}&message=Please login to access admin panel`)
+          return
+        } else if (user && !isAdmin) {
+          // Redirect non-admin users away from admin routes
+          router.push('/?message=Admin access required')
+          return
+        }
+      }
+
+      // Handle other protected routes
+      if (!user && isUserProtectedRoute) {
+        const currentPath = encodeURIComponent(pathname || '/')
+        router.push(`/login?redirect=${currentPath}`)
+        return
+      }
+    }
+  }, [user, loading, isAdmin, pathname, router])
+
+  const value = {
+    user,
+    customer,
+    session,
+    loading,
+    isAdmin,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+    updatePassword,
+    refreshUser
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+// Higher-order component for protected routes
+export function withAuth<P extends object>(Component: React.ComponentType<P>) {
+  return function AuthenticatedComponent(props: P) {
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const pathname = usePathname()
+
+    useEffect(() => {
+      if (!loading && !user) {
+        const currentPath = encodeURIComponent(pathname || '/')
+        router.push(`/login?redirect=${currentPath}`)
+      }
+    }, [user, loading, router, pathname])
+
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-wine-600"></div>
+        </div>
+      )
+    }
+
+    if (!user) {
+      return null
+    }
+
+    return <Component {...props} />
+  }
+}
