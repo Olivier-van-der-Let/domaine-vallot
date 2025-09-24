@@ -9,7 +9,6 @@
   },
   "buildCommand": "npm run build",
   "env": {
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
     "MOLLIE_API_KEY": "@mollie_api_key",
     "SENDCLOUD_API_KEY": "@sendcloud_api_key",
     "SENDCLOUD_SECRET": "@sendcloud_secret",
