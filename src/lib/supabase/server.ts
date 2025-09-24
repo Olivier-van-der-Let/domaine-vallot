@@ -47,7 +47,7 @@ function generateSlug(name: string): string {
     .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
 }
 
-// Create server client for Server Components
+// Create read-only server client for Server Components (cannot modify cookies)
 export const createServerSupabaseClient = async () => {
   // Check if we're in a build context where cookies are not available
   try {
@@ -61,10 +61,11 @@ export const createServerSupabaseClient = async () => {
             return cookieStore.get(name)?.value
           },
           set(name, value, options) {
-            cookieStore.set(name, value, options)
+            // Don't set cookies in Server Components - this prevents the error
+            // Cookie modifications should only happen in Route Handlers or Server Actions
           },
           remove(name, options) {
-            cookieStore.delete(name)
+            // Don't remove cookies in Server Components - this prevents the error
           },
         },
       }
@@ -83,6 +84,21 @@ export const createServerSupabaseClient = async () => {
       }
     )
   }
+}
+
+// Create a completely anonymous client for public data queries (no auth)
+export const createAnonymousSupabaseClient = () => {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get() { return undefined },
+        set() {},
+        remove() {},
+      },
+    }
+  )
 }
 
 // Create client for API Route Handlers
@@ -219,7 +235,31 @@ export const safeQuery = async <T>(
   return data
 }
 
-// Product queries
+// Database query helper for public data (no authentication required)
+export const safeAnonymousQuery = async <T>(
+  queryFn: (client: ReturnType<typeof createAnonymousSupabaseClient>) => Promise<{ data: T; error: any }>
+): Promise<T> => {
+  const supabase = createAnonymousSupabaseClient()
+  const { data, error } = await queryFn(supabase)
+
+  if (error) {
+    console.error('Database query error:', error)
+
+    if (error.code === 'PGRST116') {
+      throw new Error('Resource not found')
+    }
+
+    if (error.code === '42501') {
+      throw new Error('Access denied')
+    }
+
+    throw new Error(error.message || 'Database query failed')
+  }
+
+  return data
+}
+
+// Product queries - using anonymous client for public data
 export const getProducts = async (options?: {
   limit?: number
   offset?: number
@@ -227,7 +267,7 @@ export const getProducts = async (options?: {
   inStock?: boolean
   featured?: boolean
 }) => {
-  return safeQuery(async (supabase) => {
+  return safeAnonymousQuery(async (supabase) => {
     let query = supabase
       .from('wine_products')
       .select(`
@@ -379,7 +419,7 @@ function getFallbackProducts() {
 }
 
 export const getProductById = async (id: string) => {
-  return safeQuery(async (supabase) => {
+  return safeAnonymousQuery(async (supabase) => {
     return supabase
       .from('wine_products')
       .select('*')
@@ -390,7 +430,7 @@ export const getProductById = async (id: string) => {
 }
 
 export const getProductBySlug = async (slug: string) => {
-  return safeQuery(async (supabase) => {
+  return safeAnonymousQuery(async (supabase) => {
     return supabase
       .from('wine_products')
       .select('*')
@@ -569,9 +609,9 @@ export const createOrUpdateCustomer = async (userData: {
   })
 }
 
-// VAT rate queries
+// VAT rate queries - public data
 export const getVatRateByCountry = async (countryCode: string) => {
-  return safeQuery(async (supabase) => {
+  return safeAnonymousQuery(async (supabase) => {
     return supabase
       .from('vat_rates')
       .select('*')
