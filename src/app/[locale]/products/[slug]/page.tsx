@@ -3,6 +3,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductDetail from '@/components/product/ProductDetail'
 import { WineProduct } from '@/types'
+import { getProducts } from '@/lib/supabase/server'
 
 interface ProductDetailPageProps {
   params: Promise<{
@@ -11,21 +12,122 @@ interface ProductDetailPageProps {
   }>
 }
 
+// Helper function to generate slug for comparison
+function generateSlug(name: string, vintage?: number): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[ÿý]/g, 'y')
+    .replace(/[ñ]/g, 'n')
+    .replace(/[ç]/g, 'c')
+    .replace(/[«»"']/g, '') // Remove quotes and guillemets
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+
+  return vintage ? `${slug}-${vintage}` : slug
+}
+
+// Helper function to fix Supabase image URLs
+function fixSupabaseImageUrl(url: string): string {
+  if (url.includes('supabase.co/storage/v1/object/public/wines/')) {
+    // Fix missing /Public/ in the URL path
+    return url.replace('/object/public/wines/', '/object/public/Public/wines/')
+  }
+  return url
+}
+
+// Helper function to get wine-specific fallback images
+function getWineFallbackImage(wineName: string): string {
+  const name = wineName.toLowerCase()
+
+  if (name.includes('magnaneraie')) {
+    return '/images/wine-magnaneraie.svg'
+  } else if (name.includes('rosé') || name.includes('rose')) {
+    return '/images/wine-bottle-rose.svg'
+  } else if (name.includes('blanc') || name.includes('white')) {
+    return '/images/wine-bottle-white.svg'
+  } else if (name.includes('rouge') || name.includes('red')) {
+    return '/images/wine-bottle-red.svg'
+  } else {
+    return '/images/default-wine.svg'
+  }
+}
+
 async function getProduct(slug: string): Promise<WineProduct | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products/${slug}`, {
-      next: { revalidate: 3600 }
+    // Get products directly from database instead of making HTTP calls
+    const products = await getProducts({ limit: 100 })
+
+    // Find product by multiple slug matching strategies
+    const product = products.find(p => {
+      // Try exact slug match first
+      if (p.slug_en === slug || p.slug_fr === slug || p.slug === slug) return true
+
+      // Try generated slug match
+      const generatedSlug = generateSlug(p.name, p.vintage)
+      if (generatedSlug === slug) return true
+
+      // Try name-based slug match without vintage
+      const nameSlug = generateSlug(p.name)
+      if (nameSlug === slug) return true
+
+      return false
     })
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error('Failed to fetch product')
+    if (!product) {
+      return null
     }
 
-    const result = await response.json()
-    return result.data || null
+    // Check if product is active
+    if (product.is_active === false) {
+      return null
+    }
+
+    // Format product data to match WineProduct interface
+    const formattedProduct: WineProduct = {
+      id: product.id,
+      name: product.name,
+      slug: product.slug_en || product.slug || generateSlug(product.name, product.vintage),
+      sku: product.sku || '',
+      description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+      price_eur: product.price_eur || 0,
+      vintage: product.vintage || new Date().getFullYear(),
+      varietal: product.varietal || 'Red Wine',
+      producer: 'Domaine Vallot',
+      region: product.region || 'France',
+      alcohol_content: product.alcohol_content || 13.5,
+      stock_quantity: product.stock_quantity || 0,
+      images: product.product_images && product.product_images.length > 0
+        ? product.product_images.map((img: any, index: number) => ({
+            id: (index + 1).toString(),
+            url: fixSupabaseImageUrl(img.url),
+            altText: img.alt_text_en || img.alt_text_fr || product.name,
+            width: 400,
+            height: 600,
+            isPrimary: img.is_primary || index === 0
+          }))
+        : [{
+            id: '1',
+            url: getWineFallbackImage(product.name),
+            altText: product.name,
+            width: 400,
+            height: 600,
+            isPrimary: true
+          }],
+      organic_certified: product.organic_certified || false,
+      biodynamic_certified: product.biodynamic_certified || false,
+      featured: product.featured || false,
+      is_active: product.is_active !== false,
+      created_at: product.created_at || new Date().toISOString(),
+      updated_at: product.updated_at || new Date().toISOString()
+    }
+
+    return formattedProduct
   } catch (error) {
     console.error('Error fetching product:', error)
     return null
@@ -34,25 +136,58 @@ async function getProduct(slug: string): Promise<WineProduct | null> {
 
 async function getRelatedProducts(productId: string, varietal?: string): Promise<WineProduct[]> {
   try {
-    const queryParams = new URLSearchParams()
-    queryParams.append('limit', '4')
+    // Get products directly from database instead of making HTTP calls
+    const products = await getProducts({ limit: 20 })
+
+    // Filter and format related products
+    let relatedProducts = products
+      .filter(p => p.id !== productId && p.is_active !== false)
+      .map(product => ({
+        id: product.id,
+        name: product.name,
+        slug: product.slug_en || product.slug || generateSlug(product.name, product.vintage),
+        sku: product.sku || '',
+        description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+        price_eur: product.price_eur || 0,
+        vintage: product.vintage || new Date().getFullYear(),
+        varietal: product.varietal || 'Red Wine',
+        producer: 'Domaine Vallot',
+        region: product.region || 'France',
+        alcohol_content: product.alcohol_content || 13.5,
+        stock_quantity: product.stock_quantity || 0,
+        images: product.product_images && product.product_images.length > 0
+          ? product.product_images.map((img: any, index: number) => ({
+              id: (index + 1).toString(),
+              url: fixSupabaseImageUrl(img.url),
+              altText: img.alt_text_en || img.alt_text_fr || product.name,
+              width: 400,
+              height: 600,
+              isPrimary: img.is_primary || index === 0
+            }))
+          : [{
+              id: '1',
+              url: getWineFallbackImage(product.name),
+              altText: product.name,
+              width: 400,
+              height: 600,
+              isPrimary: true
+            }],
+        organic_certified: product.organic_certified || false,
+        biodynamic_certified: product.biodynamic_certified || false,
+        featured: product.featured || false,
+        is_active: product.is_active !== false,
+        created_at: product.created_at || new Date().toISOString(),
+        updated_at: product.updated_at || new Date().toISOString()
+      } as WineProduct))
+
+    // If varietal is specified, prioritize products with the same varietal
     if (varietal) {
-      queryParams.append('varietal', varietal)
+      const sameVarietal = relatedProducts.filter(p => p.varietal === varietal)
+      const otherProducts = relatedProducts.filter(p => p.varietal !== varietal)
+      relatedProducts = [...sameVarietal, ...otherProducts]
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products?${queryParams.toString()}`, {
-      next: { revalidate: 3600 }
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch related products')
-    }
-
-    const result = await response.json()
-    const products = result.data || []
-
-    // Filter out the current product and return up to 4 related products
-    return products.filter((p: WineProduct) => p.id !== productId).slice(0, 4)
+    return relatedProducts.slice(0, 4)
   } catch (error) {
     console.error('Error fetching related products:', error)
     return []
@@ -151,21 +286,7 @@ export default async function ProductDetailPage({
 
 // Generate static params for build-time optimization
 export async function generateStaticParams() {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products?limit=100`)
-
-    if (!response.ok) {
-      return []
-    }
-
-    const result = await response.json()
-    const products = result.data || []
-
-    return products.map((product: WineProduct) => ({
-      slug: product.slug || product.id
-    }))
-  } catch (error) {
-    console.error('Error generating static params:', error)
-    return []
-  }
+  // During build time, we can't access cookies so return empty to allow dynamic generation
+  // This means pages will be generated on-demand rather than at build time
+  return []
 }

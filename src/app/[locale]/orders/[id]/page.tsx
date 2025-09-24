@@ -3,6 +3,8 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { OrderWithDetails } from '@/types'
+import { getServerUser, getOrderById } from '@/lib/supabase/server'
+import { mollieClient } from '@/lib/mollie/client'
 
 interface OrderConfirmationPageProps {
   params: {
@@ -13,19 +15,116 @@ interface OrderConfirmationPageProps {
 
 async function getOrder(orderId: string): Promise<OrderWithDetails | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/orders/${orderId}`, {
-      cache: 'no-store' // Always fetch fresh order data
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error('Failed to fetch order')
+    // Get authenticated user
+    const user = await getServerUser()
+    if (!user) {
+      return null
     }
 
-    const result = await response.json()
-    return result.data || null
+    // Validate orderId format (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(orderId)) {
+      return null
+    }
+
+    // Get order from database (with user restriction)
+    const order = await getOrderById(orderId, user.id)
+
+    if (!order) {
+      return null
+    }
+
+    // Get payment status from Mollie if payment ID exists
+    let paymentStatus = 'unknown'
+    let paymentDetails = null
+
+    if (order.payment_id) {
+      try {
+        const payment = await mollieClient.getPayment(order.payment_id)
+        paymentStatus = payment.status
+        paymentDetails = {
+          id: payment.id,
+          status: payment.status,
+          method: payment.method,
+          created_at: payment.createdAt,
+          paid_at: payment.paidAt,
+          amount: payment.amount,
+          links: payment.links
+        }
+      } catch (paymentError) {
+        console.error('Failed to get payment status:', paymentError)
+        // Continue without payment details
+      }
+    }
+
+    // Format the order to match OrderWithDetails interface
+    const formattedOrder: OrderWithDetails = {
+      id: order.id,
+      orderNumber: order.id.substring(0, 8).toUpperCase(),
+      status: order.status,
+      paymentStatus: paymentStatus,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      customerEmail: order.customer_email,
+      customerFirstName: order.customer_first_name,
+      customerLastName: order.customer_last_name,
+      shippingAddress: {
+        firstName: order.shipping_address.firstName,
+        lastName: order.shipping_address.lastName,
+        company: order.shipping_address.company,
+        addressLine1: order.shipping_address.addressLine1,
+        addressLine2: order.shipping_address.addressLine2,
+        city: order.shipping_address.city,
+        stateProvince: order.shipping_address.stateProvince,
+        postalCode: order.shipping_address.postalCode,
+        countryCode: order.shipping_address.countryCode,
+        phone: order.shipping_address.phone
+      },
+      billingAddress: order.billing_address ? {
+        firstName: order.billing_address.firstName,
+        lastName: order.billing_address.lastName,
+        company: order.billing_address.company,
+        addressLine1: order.billing_address.addressLine1,
+        addressLine2: order.billing_address.addressLine2,
+        city: order.billing_address.city,
+        stateProvince: order.billing_address.stateProvince,
+        postalCode: order.billing_address.postalCode,
+        countryCode: order.billing_address.countryCode,
+        phone: order.billing_address.phone
+      } : order.shipping_address,
+      itemsWithProducts: order.order_items.map(item => ({
+        id: item.id,
+        productId: item.product_id,
+        quantity: item.quantity,
+        unitPriceEur: item.unit_price / 100,
+        lineTotalEur: item.total_price / 100,
+        product: {
+          id: item.wine_products.id,
+          name: item.wine_products.name,
+          sku: item.wine_products.sku,
+          varietal: item.wine_products.varietal,
+          vintage: item.wine_products.vintage,
+          volumeMl: item.wine_products.volume_ml || 750,
+          images: [{
+            id: '1',
+            url: item.wine_products.image_url || '/images/default-wine.svg',
+            altText: item.wine_products.name,
+            width: 400,
+            height: 600,
+            isPrimary: true
+          }]
+        }
+      })),
+      subtotalEur: order.subtotal / 100,
+      vatAmountEur: order.vat_amount / 100,
+      vatRate: order.vat_amount / order.subtotal, // Calculate VAT rate
+      shippingCostEur: order.shipping_cost / 100,
+      totalEur: order.total_amount / 100,
+      paymentMethod: order.payment_method,
+      trackingNumber: order.tracking_number || undefined
+    }
+
+    return formattedOrder
   } catch (error) {
     console.error('Error fetching order:', error)
     return null
