@@ -49,24 +49,40 @@ function generateSlug(name: string): string {
 
 // Create server client for Server Components
 export const createServerSupabaseClient = async () => {
-  const cookieStore = await cookies()
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value
+  // Check if we're in a build context where cookies are not available
+  try {
+    const cookieStore = await cookies()
+    return createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return cookieStore.get(name)?.value
+          },
+          set(name, value, options) {
+            cookieStore.set(name, value, options)
+          },
+          remove(name, options) {
+            cookieStore.delete(name)
+          },
         },
-        set(name, value, options) {
-          cookieStore.set(name, value, options)
+      }
+    )
+  } catch (error) {
+    // During build time or when cookies are not available, create a client without cookies
+    return createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get() { return undefined },
+          set() {},
+          remove() {},
         },
-        remove(name, options) {
-          cookieStore.delete(name)
-        },
-      },
-    }
-  )
+      }
+    )
+  }
 }
 
 // Create client for API Route Handlers
@@ -101,39 +117,50 @@ export type RouteHandlerSupabaseClient = ReturnType<typeof createRouteHandlerSup
 
 // Authentication helpers for server-side
 export const getServerUser = async () => {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (error) {
-    console.error('Error getting server user:', error)
+    if (error) {
+      console.error('Error getting server user:', error)
+      return null
+    }
+
+    return user
+  } catch (error) {
+    // During build time, return null for user
     return null
   }
-
-  return user
 }
 
 export const getServerSession = async () => {
-  const supabase = await createServerSupabaseClient()
-  const { data: { session }, error } = await supabase.auth.getSession()
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { session }, error } = await supabase.auth.getSession()
 
-  if (error) {
-    console.error('Error getting server session:', error)
+    if (error) {
+      console.error('Error getting server session:', error)
+      return null
+    }
+
+    return session
+  } catch (error) {
+    // During build time, return null for session
     return null
   }
-
-  return session
 }
 
 // Admin authentication helper
 export const getServerAdminUser = async () => {
-  const user = await getServerUser()
+  try {
+    const user = await getServerUser()
 
-  if (!user) {
-    throw new Error('Not authenticated')
-  }
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
 
-  // Check if user has admin role in user metadata or in a separate admin table
-  const supabase = await createServerSupabaseClient()
+    // Check if user has admin role in user metadata or in a separate admin table
+    const supabase = await createServerSupabaseClient()
 
   // Option 1: Check user metadata
   if (user.user_metadata?.role === 'admin') {
@@ -162,6 +189,10 @@ export const getServerAdminUser = async () => {
   }
 
   return user
+  } catch (error) {
+    // During build time, throw error for admin access
+    throw new Error('Admin access required')
+  }
 }
 
 // Database query helpers with error handling
