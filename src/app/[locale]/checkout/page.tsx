@@ -5,7 +5,7 @@ import { Metadata } from 'next'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CheckoutForm from '@/components/checkout/CheckoutForm'
-import AgeVerification from '@/components/verification/AgeVerification'
+import { AgeVerification } from '@/components/verification/AgeVerification'
 import { CartItemWithProduct, CartSummary, VATCalculation, CheckoutFormData } from '@/types'
 
 interface CheckoutPageProps {

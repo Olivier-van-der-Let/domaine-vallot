@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://domaine-vallot.com';
 
     // Get all products
