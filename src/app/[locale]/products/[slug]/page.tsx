@@ -3,7 +3,10 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductDetail from '@/components/product/ProductDetail'
 import { WineProduct } from '@/types'
-import { getProducts, safeAnonymousQuery, createAnonymousSupabaseClient } from '@/lib/supabase/server'
+import { getProducts } from '@/lib/supabase/server'
+
+// Force this page to be rendered dynamically to handle product data fetching properly
+export const dynamic = 'force-dynamic'
 
 interface ProductDetailPageProps {
   params: Promise<{
@@ -60,24 +63,8 @@ function getWineFallbackImage(wineName: string): string {
 
 async function getProduct(slug: string): Promise<WineProduct | null> {
   try {
-    // Use anonymous client to avoid cookie access and DYNAMIC_SERVER_USAGE error
-    const products = await safeAnonymousQuery(async (supabase) => {
-      return supabase
-        .from('wine_products')
-        .select(`
-          *,
-          product_images(
-            url,
-            alt_text_en,
-            alt_text_fr,
-            is_primary,
-            display_order
-          )
-        `)
-        .eq('is_active', true)
-        .limit(100)
-        .order('created_at', { ascending: false })
-    })
+    // Now using dynamic rendering, we can safely use the regular getProducts function
+    const products = await getProducts({ limit: 100 })
 
     // Find product by multiple slug matching strategies
     const product = products.find(p => {
@@ -191,24 +178,8 @@ async function getProduct(slug: string): Promise<WineProduct | null> {
 
 async function getRelatedProducts(productId: string, varietal?: string): Promise<WineProduct[]> {
   try {
-    // Use anonymous client to avoid cookie access and DYNAMIC_SERVER_USAGE error
-    const products = await safeAnonymousQuery(async (supabase) => {
-      return supabase
-        .from('wine_products')
-        .select(`
-          *,
-          product_images(
-            url,
-            alt_text_en,
-            alt_text_fr,
-            is_primary,
-            display_order
-          )
-        `)
-        .eq('is_active', true)
-        .limit(20)
-        .order('created_at', { ascending: false })
-    })
+    // Now using dynamic rendering, we can safely use the regular getProducts function
+    const products = await getProducts({ limit: 20 })
 
     // Filter and format related products
     let relatedProducts = products
@@ -395,9 +366,3 @@ export default async function ProductDetailPage({
   )
 }
 
-// Generate static params for build-time optimization
-export async function generateStaticParams() {
-  // During build time, we can't access cookies so return empty to allow dynamic generation
-  // This means pages will be generated on-demand rather than at build time
-  return []
-}
