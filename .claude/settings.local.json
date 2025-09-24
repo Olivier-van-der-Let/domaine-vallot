@@ -51,7 +51,8 @@
       "mcp__playwright__browser_network_requests",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "mcp__playwright__browser_wait_for"
+      "mcp__playwright__browser_wait_for",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
