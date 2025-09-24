@@ -88,20 +88,25 @@ async function getProduct(slug: string): Promise<WineProduct | null> {
       return null
     }
 
-    // Format product data to match WineProduct interface
+    // Format product data to match ProductDetail component expectations
     const formattedProduct: WineProduct = {
       id: product.id,
       name: product.name,
-      slug: product.slug_en || product.slug || generateSlug(product.name, product.vintage),
       sku: product.sku || '',
-      description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+      price: product.price_eur || 0,
       price_eur: product.price_eur || 0,
+      price_display: (product.price_eur || 0).toFixed(2),
+      description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+      category: 'Wine',
       vintage: product.vintage || new Date().getFullYear(),
+      vintage_display: product.vintage?.toString() || new Date().getFullYear().toString(),
       varietal: product.varietal || 'Red Wine',
       producer: 'Domaine Vallot',
       region: product.region || 'France',
       alcohol_content: product.alcohol_content || 13.5,
-      stock_quantity: product.stock_quantity || 0,
+      alcohol_content_display: `${(product.alcohol_content || 13.5).toFixed(1)}%`,
+      volume_display: '750ml',
+      serving_temperature: '16-18°C',
       images: product.product_images && product.product_images.length > 0
         ? product.product_images.map((img: any, index: number) => ({
             id: (index + 1).toString(),
@@ -119,6 +124,40 @@ async function getProduct(slug: string): Promise<WineProduct | null> {
             height: 600,
             isPrimary: true
           }],
+      image_url: product.product_images && product.product_images.length > 0
+        ? fixSupabaseImageUrl(product.product_images[0]?.url)
+        : getWineFallbackImage(product.name),
+      stock_quantity: product.stock_quantity || 0,
+      in_stock: (product.stock_quantity || 0) > 0,
+      stock_status: (product.stock_quantity || 0) > 10 ? 'in_stock' :
+                   (product.stock_quantity || 0) > 5 ? 'limited_stock' :
+                   (product.stock_quantity || 0) > 0 ? 'low_stock' : 'out_of_stock',
+      is_organic: product.organic_certified || false,
+      is_biodynamic: product.biodynamic_certified || false,
+      tasting_notes: {
+        appearance: 'Deep ruby red with garnet highlights',
+        nose: 'Complex aromas of dark berries, herbs, and earthy notes',
+        palate: 'Full-bodied with balanced tannins and a long, elegant finish',
+        food_pairing: 'Perfect with grilled meats, aged cheeses, and robust dishes'
+      },
+      technical_details: {
+        alcohol_content: product.alcohol_content || 13.5,
+        volume: 750,
+        serving_temperature_range: '16-18°C',
+        aging_potential: '5-10 years',
+        sulfites: 'Contains sulfites'
+      },
+      age_restriction: {
+        minimum_age: 18,
+        verification_required: true,
+        message: 'Must be 18 or older to purchase alcoholic beverages'
+      },
+      shipping_info: {
+        wine_specific: true,
+        requires_signature: true,
+        temperature_controlled: true,
+        fragile: true
+      },
       organic_certified: product.organic_certified || false,
       biodynamic_certified: product.biodynamic_certified || false,
       featured: product.featured || false,
@@ -147,14 +186,27 @@ async function getRelatedProducts(productId: string, varietal?: string): Promise
         name: product.name,
         slug: product.slug_en || product.slug || generateSlug(product.name, product.vintage),
         sku: product.sku || '',
-        description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+        price: product.price_eur || 0,
         price_eur: product.price_eur || 0,
+        price_display: (product.price_eur || 0).toFixed(2),
+        description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+        category: 'Wine',
         vintage: product.vintage || new Date().getFullYear(),
+        vintage_display: product.vintage?.toString() || new Date().getFullYear().toString(),
         varietal: product.varietal || 'Red Wine',
         producer: 'Domaine Vallot',
         region: product.region || 'France',
         alcohol_content: product.alcohol_content || 13.5,
+        alcohol_content_display: `${(product.alcohol_content || 13.5).toFixed(1)}%`,
+        volume_display: '750ml',
+        serving_temperature: '16-18°C',
         stock_quantity: product.stock_quantity || 0,
+        in_stock: (product.stock_quantity || 0) > 0,
+        stock_status: (product.stock_quantity || 0) > 10 ? 'in_stock' :
+                     (product.stock_quantity || 0) > 5 ? 'limited_stock' :
+                     (product.stock_quantity || 0) > 0 ? 'low_stock' : 'out_of_stock',
+        is_organic: product.organic_certified || false,
+        is_biodynamic: product.biodynamic_certified || false,
         images: product.product_images && product.product_images.length > 0
           ? product.product_images.map((img: any, index: number) => ({
               id: (index + 1).toString(),
@@ -172,6 +224,33 @@ async function getRelatedProducts(productId: string, varietal?: string): Promise
               height: 600,
               isPrimary: true
             }],
+        image_url: product.product_images && product.product_images.length > 0
+          ? fixSupabaseImageUrl(product.product_images[0]?.url)
+          : getWineFallbackImage(product.name),
+        tasting_notes: {
+          appearance: 'Deep ruby red with garnet highlights',
+          nose: 'Complex aromas of dark berries, herbs, and earthy notes',
+          palate: 'Full-bodied with balanced tannins and a long, elegant finish',
+          food_pairing: 'Perfect with grilled meats, aged cheeses, and robust dishes'
+        },
+        technical_details: {
+          alcohol_content: product.alcohol_content || 13.5,
+          volume: 750,
+          serving_temperature_range: '16-18°C',
+          aging_potential: '5-10 years',
+          sulfites: 'Contains sulfites'
+        },
+        age_restriction: {
+          minimum_age: 18,
+          verification_required: true,
+          message: 'Must be 18 or older to purchase alcoholic beverages'
+        },
+        shipping_info: {
+          wine_specific: true,
+          requires_signature: true,
+          temperature_controlled: true,
+          fragile: true
+        },
         organic_certified: product.organic_certified || false,
         biodynamic_certified: product.biodynamic_certified || false,
         featured: product.featured || false,

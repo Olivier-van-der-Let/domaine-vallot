@@ -47,6 +47,7 @@ interface WineProduct {
   volume_display?: string
   serving_temperature?: string
   images: WineProductImage[]
+  image_url?: string
   stock_quantity: number
   in_stock: boolean
   stock_status: string
