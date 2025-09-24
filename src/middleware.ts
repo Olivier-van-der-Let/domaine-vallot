@@ -1,8 +1,7 @@
 import createMiddleware from 'next-intl/middleware'
 import { routing } from './i18n/routing'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -17,8 +16,24 @@ export async function middleware(request: NextRequest) {
       // Create a response to get access to cookies
       const response = NextResponse.next()
 
-      // Create Supabase client with cookies from the request
-      const supabase = createServerComponentClient({ cookies: () => cookies() })
+      // Create Supabase client for middleware
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+            set(name: string, value: string, options: any) {
+              response.cookies.set(name, value, options)
+            },
+            remove(name: string, options: any) {
+              response.cookies.delete(name)
+            }
+          }
+        }
+      )
 
       // Get the current user session
       const { data: { session }, error } = await supabase.auth.getSession()

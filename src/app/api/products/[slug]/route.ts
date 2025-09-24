@@ -261,7 +261,7 @@ export async function GET(
           }))
         : [{
             id: '1',
-            url: product.image_url || getWineFallbackImage(product.name),
+            url: product.image_url ? fixSupabaseImageUrl(product.image_url) : getWineFallbackImage(product.name),
             altText: product.name,
             width: 400,
             height: 600,

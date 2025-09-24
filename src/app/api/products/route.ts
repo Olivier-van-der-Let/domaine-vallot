@@ -325,10 +325,29 @@ export async function GET(request: NextRequest) {
       // Stock status
       in_stock: product.stock_quantity > 0,
 
-      // Image handling with proper fallback
+      // Image handling with proper fallback and images array for consistency
       image_url: product.product_images?.[0]?.url
         ? fixSupabaseImageUrl(product.product_images[0].url)
         : getWineFallbackImage(product.name),
+
+      // Add images array for consistency with ProductDetail component
+      images: product.product_images && product.product_images.length > 0
+        ? product.product_images.map((img, index) => ({
+            id: (index + 1).toString(),
+            url: fixSupabaseImageUrl(img.url),
+            altText: img.alt_text_en || img.alt_text_fr || product.name,
+            width: 400,
+            height: 600,
+            isPrimary: img.is_primary || index === 0
+          }))
+        : [{
+            id: '1',
+            url: getWineFallbackImage(product.name),
+            altText: product.name,
+            width: 400,
+            height: 600,
+            isPrimary: true
+          }],
 
       // Ensure proper slug generation
       slug: product.slug_en || product.slug || generateSlug(`${product.name}-${product.vintage}`),

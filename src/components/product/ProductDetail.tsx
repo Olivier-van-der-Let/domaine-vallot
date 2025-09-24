@@ -582,39 +582,79 @@ export default function ProductDetail({
               {locale === 'fr' ? 'Autres Vins de la Collection' : 'Other Wines from the Collection'}
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {relatedProducts.slice(0, 4).map((relatedProduct) => (
-                <Link
-                  key={relatedProduct.id}
-                  href={`/${locale}/products/${relatedProduct.slug || relatedProduct.id}`}
-                  className="group bg-white rounded-xl shadow-lg border border-heritage-limestone-200 overflow-hidden hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="aspect-[3/4] bg-heritage-limestone-100 overflow-hidden">
-                    <Image
-                      src={relatedProduct.images?.[0]?.url || '/images/default-wine.svg'}
-                      alt={relatedProduct.name}
-                      width={300}
-                      height={400}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/images/default-wine.svg'
-                      }}
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-serif text-lg text-heritage-slate-900 mb-2 group-hover:text-heritage-rouge-700 transition-colors">
-                      {relatedProduct.name}
-                    </h3>
-                    <p className="text-heritage-olive-600 text-sm mb-3">
-                      {relatedProduct.vintage_display} • {relatedProduct.region}
-                    </p>
-                    <div className="text-xl font-bold text-heritage-slate-900">
-                      €{relatedProduct.price_display}
-                    </div>
-                  </div>
-                </Link>
-              ))}
+            <div className="flex justify-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-4xl">
+                {relatedProducts.slice(0, 3).map((relatedProduct) => {
+                  // Get the primary image URL with comprehensive fallback logic
+                  const getRelatedProductImageUrl = (product: WineProduct): string => {
+                    // First, try to get the primary image from images array
+                    if (product.images && product.images.length > 0) {
+                      const primaryImage = product.images.find(img => img.isPrimary) || product.images[0]
+                      if (primaryImage?.url) {
+                        return primaryImage.url
+                      }
+                    }
+
+                    // Fallback to image_url property
+                    if (product.image_url) {
+                      return product.image_url
+                    }
+
+                    // Use wine-specific fallback based on name and type
+                    const name = product.name.toLowerCase()
+                    if (name.includes('rosé') || name.includes('rose')) {
+                      return '/images/wine-bottle-rose.svg'
+                    } else if (name.includes('blanc') || name.includes('white')) {
+                      return '/images/wine-bottle-white.svg'
+                    } else {
+                      return '/images/wine-bottle-red.svg'
+                    }
+                  }
+
+                  const imageUrl = getRelatedProductImageUrl(relatedProduct)
+
+                  return (
+                    <Link
+                      key={relatedProduct.id}
+                      href={`/${locale}/products/${relatedProduct.slug || relatedProduct.id}`}
+                      className="group bg-white rounded-xl shadow-lg border border-heritage-limestone-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+                    >
+                      <div className="aspect-[3/4] bg-heritage-limestone-100 overflow-hidden">
+                        <Image
+                          src={imageUrl}
+                          alt={relatedProduct.images?.[0]?.altText || relatedProduct.name}
+                          width={300}
+                          height={400}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            // Fallback based on wine type
+                            const name = relatedProduct.name.toLowerCase()
+                            if (name.includes('rosé') || name.includes('rose')) {
+                              target.src = '/images/wine-bottle-rose.svg'
+                            } else if (name.includes('blanc') || name.includes('white')) {
+                              target.src = '/images/wine-bottle-white.svg'
+                            } else {
+                              target.src = '/images/wine-bottle-red.svg'
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="p-6">
+                        <h3 className="font-serif text-lg text-heritage-slate-900 mb-2 group-hover:text-heritage-rouge-700 transition-colors">
+                          {relatedProduct.name}
+                        </h3>
+                        <p className="text-heritage-olive-600 text-sm mb-3">
+                          {relatedProduct.vintage_display || relatedProduct.vintage} • {relatedProduct.region}
+                        </p>
+                        <div className="text-xl font-bold text-heritage-slate-900">
+                          €{relatedProduct.price_display}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
           </div>
         )}

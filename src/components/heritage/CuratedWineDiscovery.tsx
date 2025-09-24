@@ -24,77 +24,91 @@ interface WineStory {
   price: number
   vintage: string
   image: string
+  slug: string
 }
 
 export default function CuratedWineDiscovery({ locale, products }: CuratedWineDiscoveryProps) {
   const [selectedWine, setSelectedWine] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'story'>('story')
 
-  // Transform product data into wine stories
-  const wineStories: WineStory[] = products.slice(0, 6).map((product, index) => {
+  // Show the first 3 featured products passed from the server
+  // Since getFeaturedProducts already filters for featured wines, just use them
+  const featuredProducts = products.slice(0, 3)
+
+  // Transform real product data into wine stories
+  const wineStories: WineStory[] = featuredProducts.map((product) => {
+    const isClaudeWine = product.name?.includes('Claude')
+    const isFrancoisWine = product.name?.includes('François')
+    const isHautDesCotesWine = product.name?.includes('Haut des Côtes')
+
     const storyData = locale === 'fr' ? {
-      terroir: ['Coteaux calcaires', 'Terrasses argileuses', 'Plateaux ventés', 'Versants sud', 'Sols profonds', 'Pentes douces'][index] || 'Terroir unique',
-      plot: [`Parcelle "Les Oliviers"`, `Parcelle "La Crau"`, `Parcelle "Mont Ventoux"`, `Parcelle "Les Garrigues"`, `Parcelle "Le Plateau"`, `Parcelle "Les Restanques"`][index] || 'Parcelle sélectionnée',
-      story: [
-        'Issu de nos coteaux calcaires les plus exposés, ce vin capture l\'essence du terroir méditerranéen.',
-        'Cultivé sur des terrasses ancestrales, ce vin exprime la profondeur de nos sols argileux.',
-        'Élevé sur nos plateaux battus par le mistral, ce vin révèle une concentration exceptionnelle.',
-        'Né de nos versants orientés sud, ce vin bénéficie d\'un ensoleillement optimal.',
-        'Provenant de nos sols les plus profonds, ce vin développe une complexité remarquable.',
-        'Issu de nos pentes douces, ce vin allie finesse et caractère authentique.'
-      ][index] || 'Une expression unique de notre terroir exceptionnel.',
-      notes: [
-        ['Fruits rouges', 'Garrigue', 'Minéralité'],
-        ['Épices douces', 'Cuir', 'Terre humide'],
-        ['Fruits noirs', 'Lavande', 'Pierre chaude'],
-        ['Cerise', 'Thym', 'Calcaire'],
-        ['Mûre', 'Olive', 'Fumé'],
-        ['Framboise', 'Romarin', 'Silex']
-      ][index] || ['Arômes complexes', 'Terroir', 'Élégance'],
+      terroir: isClaudeWine
+        ? 'Coteaux de Vinsobres'
+        : isFrancoisWine
+        ? 'Terroir traditionnel de Vinsobres'
+        : 'Hauts coteaux calcaires',
+      plot: isClaudeWine
+        ? 'Vieilles vignes de 67 ans'
+        : isFrancoisWine
+        ? 'Parcelles familiales en coteaux'
+        : 'Parcelles "Le Haut des Côtes"',
+      story: isClaudeWine
+        ? 'Issu de vieilles vignes de 67 ans cultivées en coteaux, ce vin bénéficie d\'un élevage de 6 à 8 mois en barriques qui lui confère sa complexité et son caractère exceptionnel.'
+        : isFrancoisWine
+        ? 'Robe sombre et grenat profond, ce vin charnu et structuré exprime parfaitement la tradition familiale. Sans élevage en barrique, il révèle la pureté du fruit et l\'authenticité du terroir.'
+        : 'Une couleur rouge foncé avec un bouquet intense aux notes de vanille et de sous-bois. Élevé 10 à 12 mois en barriques, ce vin révèle des tanins fins et soyeux d\'une rare élégance.',
+      notes: isClaudeWine
+        ? ['Fruits rouges mûrs', 'Épices', 'Boisé fin']
+        : isFrancoisWine
+        ? ['Fruits rouges mûrs', 'Épices douces', 'Terroir']
+        : ['Vanille', 'Sous-bois', 'Fruits rouges'],
       characteristics: {
-        body: ['Élégant', 'Puissant', 'Concentré', 'Harmonieux', 'Complexe', 'Raffiné'][index] || 'Équilibré',
-        tannins: ['Soyeux', 'Structurés', 'Fermes', 'Fondus', 'Nobles', 'Fins'][index] || 'Équilibrés',
-        acidity: ['Vive', 'Équilibrée', 'Fraîche', 'Harmonieuse', 'Intégrée', 'Élégante'][index] || 'Parfaite',
-        aging: ['3-5 ans', '5-8 ans', '8-12 ans', '3-6 ans', '10-15 ans', '4-7 ans'][index] || '5-10 ans'
+        body: isClaudeWine ? 'Complexe' : isFrancoisWine ? 'Charnu' : 'Élégant',
+        tannins: isClaudeWine ? 'Structurés' : isFrancoisWine ? 'Équilibrés' : 'Fins et soyeux',
+        acidity: isClaudeWine ? 'Équilibrée' : isFrancoisWine ? 'Harmonieuse' : 'Fraîche',
+        aging: isClaudeWine ? '10 ans' : isFrancoisWine ? '5-8 ans' : '10 ans'
       }
     } : {
-      terroir: ['Limestone hillsides', 'Clay terraces', 'Windy plateaus', 'South-facing slopes', 'Deep soils', 'Gentle slopes'][index] || 'Unique terroir',
-      plot: [`"Les Oliviers" Plot`, `"La Crau" Plot`, `"Mont Ventoux" Plot`, `"Les Garrigues" Plot`, `"Le Plateau" Plot`, `"Les Restanques" Plot`][index] || 'Selected plot',
-      story: [
-        'From our most exposed limestone hillsides, this wine captures the essence of Mediterranean terroir.',
-        'Cultivated on ancestral terraces, this wine expresses the depth of our clay soils.',
-        'Raised on our plateaus beaten by the mistral, this wine reveals exceptional concentration.',
-        'Born from our south-facing slopes, this wine benefits from optimal sun exposure.',
-        'From our deepest soils, this wine develops remarkable complexity.',
-        'From our gentle slopes, this wine combines finesse with authentic character.'
-      ][index] || 'A unique expression of our exceptional terroir.',
-      notes: [
-        ['Red fruits', 'Garrigue', 'Minerality'],
-        ['Sweet spices', 'Leather', 'Damp earth'],
-        ['Dark fruits', 'Lavender', 'Warm stone'],
-        ['Cherry', 'Thyme', 'Limestone'],
-        ['Blackberry', 'Olive', 'Smoke'],
-        ['Raspberry', 'Rosemary', 'Flint']
-      ][index] || ['Complex aromas', 'Terroir', 'Elegance'],
+      terroir: isClaudeWine
+        ? 'Vinsobres hillsides'
+        : isFrancoisWine
+        ? 'Traditional Vinsobres terroir'
+        : 'High limestone hillsides',
+      plot: isClaudeWine
+        ? '67-year-old vines'
+        : isFrancoisWine
+        ? 'Family hillside plots'
+        : '"Le Haut des Côtes" plots',
+      story: isClaudeWine
+        ? 'From 67-year-old vines grown on hillsides, this wine benefits from 6 to 8 months of barrel aging that gives it complexity and exceptional character.'
+        : isFrancoisWine
+        ? 'Dark garnet robe, this full-bodied and structured wine perfectly expresses family tradition. Without barrel aging, it reveals fruit purity and terroir authenticity.'
+        : 'Deep red color with an intense bouquet of vanilla and forest floor notes. Aged 10 to 12 months in barrels, this wine reveals fine and silky tannins of rare elegance.',
+      notes: isClaudeWine
+        ? ['Ripe red fruits', 'Spices', 'Fine oak']
+        : isFrancoisWine
+        ? ['Ripe red fruits', 'Sweet spices', 'Terroir']
+        : ['Vanilla', 'Forest floor', 'Red fruits'],
       characteristics: {
-        body: ['Elegant', 'Powerful', 'Concentrated', 'Harmonious', 'Complex', 'Refined'][index] || 'Balanced',
-        tannins: ['Silky', 'Structured', 'Firm', 'Integrated', 'Noble', 'Fine'][index] || 'Balanced',
-        acidity: ['Lively', 'Balanced', 'Fresh', 'Harmonious', 'Integrated', 'Elegant'][index] || 'Perfect',
-        aging: ['3-5 years', '5-8 years', '8-12 years', '3-6 years', '10-15 years', '4-7 years'][index] || '5-10 years'
+        body: isClaudeWine ? 'Complex' : isFrancoisWine ? 'Full-bodied' : 'Elegant',
+        tannins: isClaudeWine ? 'Structured' : isFrancoisWine ? 'Balanced' : 'Fine and silky',
+        acidity: isClaudeWine ? 'Balanced' : isFrancoisWine ? 'Harmonious' : 'Fresh',
+        aging: isClaudeWine ? '10 years' : isFrancoisWine ? '5-8 years' : '10 years'
       }
     }
 
     return {
-      id: product.id || `wine-${index}`,
-      name: product.name || `Wine ${index + 1}`,
+      id: product.id || `wine-${product.name}`,
+      name: product.name || 'Domaine Vallot Wine',
       terroir: storyData.terroir,
       plot: storyData.plot,
       story: storyData.story,
       notes: storyData.notes,
       characteristics: storyData.characteristics,
-      price: product.price || 15,
-      vintage: product.vintage || '2023',
-      image: product.image || `https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/wine-bottle-${index + 1}.jpg`
+      price: product.price_eur || product.price || 15,
+      vintage: product.vintage || 2023,
+      image: product.product_images?.[0]?.url || product.image_url || product.image || '/images/wine-bottle-red.svg',
+      slug: product.slug || product.slug_en || `${product.name?.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${product.vintage}` || 'wine'
     }
   })
 
@@ -282,15 +296,21 @@ export default function CuratedWineDiscovery({ locale, products }: CuratedWineDi
 
                   {/* CTA Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <button className="inline-flex items-center px-6 py-3 bg-heritage-rouge-700 text-white font-semibold rounded-md hover:bg-heritage-rouge-800 focus:ring-2 focus:ring-heritage-rouge-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                    <Link
+                      href={`/${locale}/products/${wine.slug}`}
+                      className="inline-flex items-center px-6 py-3 bg-heritage-rouge-700 text-white font-semibold rounded-md hover:bg-heritage-rouge-800 focus:ring-2 focus:ring-heritage-rouge-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
                       {text.cta.discover}
                       <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                       </svg>
-                    </button>
-                    <button className="inline-flex items-center px-6 py-3 border-2 border-heritage-slate-300 text-heritage-slate-700 font-semibold rounded-md hover:bg-heritage-slate-50 focus:ring-2 focus:ring-heritage-slate-300 transition-all duration-200">
+                    </Link>
+                    <Link
+                      href={`/${locale}/products/${wine.slug}`}
+                      className="inline-flex items-center px-6 py-3 border-2 border-heritage-slate-300 text-heritage-slate-700 font-semibold rounded-md hover:bg-heritage-slate-50 focus:ring-2 focus:ring-heritage-slate-300 transition-all duration-200"
+                    >
                       {text.cta.technicalSheet}
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -334,9 +354,12 @@ export default function CuratedWineDiscovery({ locale, products }: CuratedWineDi
                     ))}
                   </div>
 
-                  <button className="w-full px-4 py-2 bg-heritage-rouge-700 text-white font-semibold rounded-md hover:bg-heritage-rouge-800 transition-colors duration-200">
+                  <Link
+                    href={`/${locale}/products/${wine.slug}`}
+                    className="w-full px-4 py-2 bg-heritage-rouge-700 text-white font-semibold rounded-md hover:bg-heritage-rouge-800 transition-colors duration-200 text-center block"
+                  >
                     {text.cta.discover}
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}

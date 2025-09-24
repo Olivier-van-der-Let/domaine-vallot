@@ -3,6 +3,50 @@ import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import { Database } from '@/types/database.types'
 
+// Helper function to fix Supabase image URLs
+export function fixSupabaseImageUrl(url: string): string {
+  if (url.includes('supabase.co/storage/v1/object/public/wines/')) {
+    // Fix missing /Public/ in the URL path
+    return url.replace('/object/public/wines/', '/object/public/Public/wines/')
+  }
+  return url
+}
+
+// Helper function to get wine-specific fallback images
+export function getWineFallbackImage(wineName: string): string {
+  const name = wineName.toLowerCase()
+
+  if (name.includes('magnaneraie')) {
+    return '/images/wine-magnaneraie.svg'
+  } else if (name.includes('rosé') || name.includes('rose')) {
+    return '/images/wine-bottle-rose.svg'
+  } else if (name.includes('blanc') || name.includes('white')) {
+    return '/images/wine-bottle-white.svg'
+  } else if (name.includes('rouge') || name.includes('red')) {
+    return '/images/wine-bottle-red.svg'
+  } else {
+    return '/images/default-wine.svg'
+  }
+}
+
+// Helper function to generate slug from product name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[ÿý]/g, 'y')
+    .replace(/[ñ]/g, 'n')
+    .replace(/[ç]/g, 'c')
+    .replace(/[«»\"']/g, '') // Remove quotes and guillemets
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+}
+
 // Create server client for Server Components
 export const createServerSupabaseClient = async () => {
   const cookieStore = await cookies()
@@ -47,6 +91,9 @@ export const createRouteHandlerSupabaseClient = (request?: NextRequest) => {
     }
   )
 }
+
+// Export createClient alias for backward compatibility
+export const createClient = createServerSupabaseClient
 
 // Type helpers for server-side usage
 export type ServerSupabaseClient = ReturnType<typeof createServerClient>
@@ -94,13 +141,23 @@ export const getServerAdminUser = async () => {
   }
 
   // Option 2: Check admin table (if exists)
-  const { data: adminRecord } = await supabase
-    .from('admin_users')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  try {
+    const { data: adminRecord, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
 
-  if (!adminRecord) {
+    if (error && error.code !== 'PGRST116') {
+      console.warn('Admin table check failed:', error)
+      throw new Error('Admin access required')
+    }
+
+    if (!adminRecord) {
+      throw new Error('Admin access required')
+    }
+  } catch (error) {
+    console.warn('Admin table not found or accessible, falling back to metadata check')
     throw new Error('Admin access required')
   }
 
@@ -137,21 +194,22 @@ export const getProducts = async (options?: {
   offset?: number
   category?: string
   inStock?: boolean
+  featured?: boolean
 }) => {
   return safeQuery(async (supabase) => {
     let query = supabase
       .from('wine_products')
       .select(`
         *,
-        product_images!inner(
+        product_images(
           url,
           alt_text_en,
           alt_text_fr,
-          is_primary
+          is_primary,
+          display_order
         )
       `)
       .eq('is_active', true)
-      .eq('product_images.is_primary', true)
 
     if (options?.category) {
       query = query.eq('category', options.category)
@@ -159,6 +217,10 @@ export const getProducts = async (options?: {
 
     if (options?.inStock) {
       query = query.gt('stock_quantity', 0)
+    }
+
+    if (options?.featured) {
+      query = query.eq('featured', true)
     }
 
     if (options?.limit) {
@@ -171,6 +233,118 @@ export const getProducts = async (options?: {
 
     return query.order('created_at', { ascending: false })
   })
+}
+
+// Get featured products for homepage
+export const getFeaturedProducts = async (limit: number = 6) => {
+  try {
+    const products = await getProducts({
+      featured: true,
+      limit,
+      inStock: true
+    })
+
+    // Transform the data to match the expected format
+    return products.map(product => ({
+      ...product,
+      // Map key fields to expected names for backward compatibility
+      description: product.description_en || product.description_fr || 'Fine wine from Domaine Vallot',
+      grape_variety: product.varietal,
+      producer: 'Domaine Vallot',
+      alcohol_content: product.alcohol_content || 13.5,
+
+      // Price handling
+      price_display: product.price_eur ? product.price_eur.toString() : '0.00',
+      price: product.price_eur ? Math.round(parseFloat(product.price_eur.toString()) * 100) : 0,
+
+      // Stock status
+      in_stock: product.stock_quantity > 0,
+
+      // Image handling with proper fallback and URL fix
+      image_url: product.product_images?.[0]?.url
+        ? fixSupabaseImageUrl(product.product_images[0].url)
+        : getWineFallbackImage(product.name),
+      image: product.product_images?.[0]?.url
+        ? fixSupabaseImageUrl(product.product_images[0].url)
+        : getWineFallbackImage(product.name),
+
+      // Additional fields for UI
+      is_organic: product.organic_certified || false,
+      is_biodynamic: product.biodynamic_certified || false,
+      is_featured: product.featured || false,
+
+      // Ensure proper slug generation
+      slug: product.slug_en || product.slug_fr || generateSlug(`${product.name}-${product.vintage}`)
+    }))
+  } catch (error) {
+    console.error('Error fetching featured products from database:', error)
+    // Return fallback mock data if database fails
+    return getFallbackProducts()
+  }
+}
+
+
+// Fallback mock data for development
+function getFallbackProducts() {
+  return [
+    {
+      id: '1',
+      name: 'Vinsobres rouge « François »',
+      slug: 'vinsobres-rouge-francois-2022',
+      description: 'A premium red wine with notes of dark fruit and traditional terroir expression.',
+      price_eur: 12.00,
+      price: 1200,
+      vintage: 2022,
+      grape_variety: 'Syrah blend',
+      producer: 'Domaine Vallot',
+      region: 'Vinsobres',
+      stock_quantity: 50,
+      is_organic: true,
+      is_biodynamic: true,
+      featured: true,
+      image_url: '/images/wine-bottle-red.svg',
+      image: '/images/wine-bottle-red.svg',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '2',
+      name: 'Vinsobres Cuvée « Claude »',
+      slug: 'vinsobres-cuvee-claude-2018',
+      description: 'From 67-year-old vines, this wine benefits from barrel aging for exceptional complexity.',
+      price_eur: 14.50,
+      price: 1450,
+      vintage: 2018,
+      grape_variety: 'Old vine Syrah',
+      producer: 'Domaine Vallot',
+      region: 'Vinsobres',
+      stock_quantity: 30,
+      is_organic: true,
+      is_biodynamic: true,
+      featured: true,
+      image_url: '/images/wine-bottle-red.svg',
+      image: '/images/wine-bottle-red.svg',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '3',
+      name: 'Vinsobres Le Haut des Côtes',
+      slug: 'vinsobres-le-haut-des-cotes-2018',
+      description: 'Deep red color with intense bouquet of vanilla and forest floor notes.',
+      price_eur: 16.50,
+      price: 1650,
+      vintage: 2018,
+      grape_variety: 'Syrah, Grenache',
+      producer: 'Domaine Vallot',
+      region: 'Vinsobres',
+      stock_quantity: 25,
+      is_organic: true,
+      is_biodynamic: true,
+      featured: true,
+      image_url: '/images/wine-bottle-red.svg',
+      image: '/images/wine-bottle-red.svg',
+      created_at: new Date().toISOString()
+    }
+  ]
 }
 
 export const getProductById = async (id: string) => {

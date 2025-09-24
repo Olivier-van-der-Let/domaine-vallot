@@ -13,7 +13,7 @@ interface ProductDetailPageProps {
 
 async function getProduct(slug: string): Promise<WineProduct | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/products/${slug}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products/${slug}`, {
       next: { revalidate: 3600 }
     })
 
@@ -40,7 +40,7 @@ async function getRelatedProducts(productId: string, varietal?: string): Promise
       queryParams.append('varietal', varietal)
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/products?${queryParams.toString()}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products?${queryParams.toString()}`, {
       next: { revalidate: 3600 }
     })
 
@@ -120,15 +120,23 @@ export default async function ProductDetailPage({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-8">
-          <a href={`/${locale}`} className="hover:text-gray-700">
+          <a
+            href={`/${locale}`}
+            className="hover:text-gray-700 transition-colors duration-200 flex items-center leading-none"
+          >
             {locale === 'fr' ? 'Accueil' : 'Home'}
           </a>
-          <span>/</span>
-          <a href={`/${locale}/products`} className="hover:text-gray-700">
+          <span className="text-gray-400 select-none flex items-center leading-none" aria-hidden="true">/</span>
+          <a
+            href={`/${locale}/products`}
+            className="hover:text-gray-700 transition-colors duration-200 flex items-center leading-none"
+          >
             {locale === 'fr' ? 'Produits' : 'Products'}
           </a>
-          <span>/</span>
-          <span className="text-gray-900">{product.name}</span>
+          <span className="text-gray-400 select-none flex items-center leading-none" aria-hidden="true">/</span>
+          <span className="text-gray-900 flex items-center leading-none truncate">
+            {product.name}
+          </span>
         </nav>
 
         <ProductDetail
@@ -144,7 +152,7 @@ export default async function ProductDetailPage({
 // Generate static params for build-time optimization
 export async function generateStaticParams() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/products?limit=100`)
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/products?limit=100`)
 
     if (!response.ok) {
       return []

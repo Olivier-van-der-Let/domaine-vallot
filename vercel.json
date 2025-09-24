@@ -7,11 +7,14 @@
       "NEXT_PUBLIC_SITE_URL": "@next_public_site_url"
     }
   },
+  "buildCommand": "npm run build",
   "env": {
     "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
     "MOLLIE_API_KEY": "@mollie_api_key",
     "SENDCLOUD_API_KEY": "@sendcloud_api_key",
-    "SENDCLOUD_API_SECRET": "@sendcloud_api_secret",
+    "SENDCLOUD_SECRET": "@sendcloud_secret",
+    "SENDCLOUD_PUBLIC_KEY": "@sendcloud_public_key",
+    "SENDCLOUD_SECRET_KEY": "@sendcloud_secret_key",
     "RESEND_API_KEY": "@resend_api_key",
     "META_ACCESS_TOKEN": "@meta_access_token",
     "META_CATALOG_ID": "@meta_catalog_id",
@@ -22,8 +25,9 @@
   },
   "functions": {
     "src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30
+      "runtime": "nodejs20.x",
+      "maxDuration": 30,
+      "memory": 512
     }
   },
   "headers": [

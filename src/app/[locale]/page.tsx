@@ -7,52 +7,10 @@ import TerroirDeepDive from '@/components/heritage/TerroirDeepDive'
 import CuratedWineDiscovery from '@/components/heritage/CuratedWineDiscovery'
 import ArtisanProcessShowcase from '@/components/heritage/ArtisanProcessShowcase'
 import ConnectDiscoverSection from '@/components/heritage/ConnectDiscoverSection'
+import { getFeaturedProducts } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Home',
-}
-
-async function getFeaturedProducts() {
-  try {
-    // Use relative URL for internal API calls - automatically uses correct port
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'
-    const response = await fetch(`${baseUrl}/api/products?featured=true&limit=6`, {
-      next: { revalidate: 3600 }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`)
-    }
-
-    const result = await response.json()
-    return result.data || []
-  } catch (error) {
-    console.error('Error fetching featured products:', error)
-    // Return mock data as fallback for development
-    return [
-      {
-        id: '1',
-        name: 'Vallot Rouge 2020',
-        price: 25.00,
-        vintage: 2020,
-        image: '/images/wine-bottle-red.svg'
-      },
-      {
-        id: '2',
-        name: 'Vallot Blanc 2021',
-        price: 22.00,
-        vintage: 2021,
-        image: '/images/wine-bottle-white.svg'
-      },
-      {
-        id: '3',
-        name: 'Vallot Rosé 2022',
-        price: 18.00,
-        vintage: 2022,
-        image: '/images/wine-bottle-rose.svg'
-      }
-    ]
-  }
 }
 
 export default async function HomePage({
@@ -61,7 +19,7 @@ export default async function HomePage({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
-  const featuredProducts = await getFeaturedProducts()
+  const featuredProducts = await getFeaturedProducts(6)
 
   return (
     <div className="min-h-screen">
