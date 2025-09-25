@@ -21,31 +21,30 @@ export async function GET(request: NextRequest) {
     let totalItems = 0
 
     const formattedItems = cartItems.map(item => {
-      const itemTotal = item.quantity * item.wine_products.price
-      subtotal += itemTotal
+      const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
+      subtotal += itemTotal // Keep as euros
       totalItems += item.quantity
 
       return {
         id: item.id,
-        product_id: item.product_id,
+        productId: item.product_id,
         quantity: item.quantity,
-        added_at: item.created_at,
+        addedAt: item.added_at,
         product: {
           id: item.wine_products.id,
           name: item.wine_products.name,
           sku: item.wine_products.sku,
-          price: item.wine_products.price,
-          price_display: (item.wine_products.price / 100).toFixed(2),
-          image_url: item.wine_products.image_url || '/images/default-wine.jpg',
-          category: item.wine_products.category,
+          priceEur: item.wine_products.price_eur || 0,
+          price_display: (item.wine_products.price_eur || 0).toFixed(2),
+          image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
+          category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,
           stock_quantity: item.wine_products.stock_quantity,
           in_stock: item.wine_products.stock_quantity > 0,
           alcohol_content: item.wine_products.alcohol_content,
-          volume: item.wine_products.volume || 750
+          volume: item.wine_products.volume_ml || 750
         },
-        subtotal: itemTotal,
-        subtotal_display: (itemTotal / 100).toFixed(2)
+        subtotalEur: itemTotal
       }
     })
 
@@ -56,6 +55,15 @@ export async function GET(request: NextRequest) {
     )
 
     return NextResponse.json({
+      success: true,
+      data: {
+        items: formattedItems,
+        summary: {
+          itemCount: formattedItems.length,
+          totalQuantity: totalItems,
+          subtotalEur: subtotal
+        }
+      },
       cart: {
         id: `cart-${user.id}`,
         user_id: user.id,
@@ -64,7 +72,7 @@ export async function GET(request: NextRequest) {
           total_items: totalItems,
           total_products: formattedItems.length,
           subtotal,
-          subtotal_display: (subtotal / 100).toFixed(2),
+          subtotal_display: subtotal.toFixed(2),
           currency: 'EUR'
         },
         issues: {
@@ -136,50 +144,46 @@ export async function POST(request: NextRequest) {
     let totalItems = 0
 
     const formattedItems = updatedCartItems.map(item => {
-      const itemTotal = item.quantity * item.wine_products.price
-      subtotal += itemTotal
+      const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
+      subtotal += itemTotal // Keep as euros
       totalItems += item.quantity
 
       return {
         id: item.id,
-        product_id: item.product_id,
+        productId: item.product_id,
         quantity: item.quantity,
-        added_at: item.created_at,
+        addedAt: item.added_at,
         product: {
           id: item.wine_products.id,
           name: item.wine_products.name,
           sku: item.wine_products.sku,
-          price: item.wine_products.price,
-          price_display: (item.wine_products.price / 100).toFixed(2),
-          image_url: item.wine_products.image_url || '/images/default-wine.jpg',
-          category: item.wine_products.category,
+          priceEur: item.wine_products.price_eur || 0,
+          price_display: (item.wine_products.price_eur || 0).toFixed(2),
+          image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
+          category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,
           stock_quantity: item.wine_products.stock_quantity,
           in_stock: item.wine_products.stock_quantity > 0
         },
-        subtotal: itemTotal,
-        subtotal_display: (itemTotal / 100).toFixed(2)
+        subtotalEur: itemTotal
       }
     })
 
     return NextResponse.json({
+      success: true,
       message: 'Item added to cart successfully',
-      added_item: {
-        id: cartItem.id,
-        product_id: cartItem.product_id,
-        quantity: cartItem.quantity
-      },
-      cart: {
-        id: `cart-${user.id}`,
-        user_id: user.id,
+      data: {
         items: formattedItems,
         summary: {
-          total_items: totalItems,
-          total_products: formattedItems.length,
-          subtotal,
-          subtotal_display: (subtotal / 100).toFixed(2),
-          currency: 'EUR'
+          itemCount: formattedItems.length,
+          totalQuantity: totalItems,
+          subtotalEur: subtotal
         }
+      },
+      added_item: {
+        id: cartItem.id,
+        productId: cartItem.product_id,
+        quantity: cartItem.quantity
       }
     }, { status: 201 })
 

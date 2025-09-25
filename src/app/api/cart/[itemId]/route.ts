@@ -188,7 +188,7 @@ export async function DELETE(
 // Helper functions
 function formatCartItems(cartItems: any[]) {
   return cartItems.map(item => {
-    const itemTotal = item.quantity * item.wine_products.price
+    const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
 
     return {
       id: item.id,
@@ -200,18 +200,18 @@ function formatCartItems(cartItems: any[]) {
         id: item.wine_products.id,
         name: item.wine_products.name,
         sku: item.wine_products.sku,
-        price: item.wine_products.price,
-        price_display: (item.wine_products.price / 100).toFixed(2),
-        image_url: item.wine_products.image_url || '/images/default-wine.jpg',
-        category: item.wine_products.category,
+        price: item.wine_products.price_eur || 0,
+        price_display: (item.wine_products.price_eur || 0).toFixed(2),
+        image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
+        category: item.wine_products.varietal || 'Wine',
         vintage: item.wine_products.vintage,
         stock_quantity: item.wine_products.stock_quantity,
         in_stock: item.wine_products.stock_quantity > 0,
         alcohol_content: item.wine_products.alcohol_content,
-        volume: item.wine_products.volume || 750
+        volume: item.wine_products.volume_ml || 750
       },
       subtotal: itemTotal,
-      subtotal_display: (itemTotal / 100).toFixed(2),
+      subtotal_display: itemTotal.toFixed(2),
 
       // Item-specific warnings
       warnings: [
@@ -239,7 +239,7 @@ function calculateCartSummary(cartItems: any[]) {
   let totalBottles = 0
 
   cartItems.forEach(item => {
-    const itemTotal = item.quantity * item.wine_products.price
+    const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
     subtotal += itemTotal
     totalItems += item.quantity
     totalBottles += item.quantity // Assuming each item is one bottle
@@ -253,7 +253,7 @@ function calculateCartSummary(cartItems: any[]) {
     total_bottles: totalBottles,
     total_products: cartItems.length,
     subtotal,
-    subtotal_display: (subtotal / 100).toFixed(2),
+    subtotal_display: subtotal.toFixed(2),
     currency: 'EUR',
     estimated_weight: estimatedWeight,
 
@@ -266,7 +266,7 @@ function calculateCartSummary(cartItems: any[]) {
       all_available: cartItems.every(item =>
         item.wine_products.is_active
       ),
-      minimum_order_met: subtotal >= 1000, // €10 minimum order
+      minimum_order_met: subtotal >= 10, // €10 minimum order
       maximum_bottles_limit: totalBottles <= 100 // 100 bottle limit for shipping
     },
 

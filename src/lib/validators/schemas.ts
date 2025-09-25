@@ -231,7 +231,6 @@ export const addToCartSchema = z.object({
 })
 
 export const updateCartItemSchema = z.object({
-  itemId: z.string().uuid('Invalid cart item ID'),
   quantity: z.number()
     .min(0, 'Quantity must be 0 or more')
     .max(24, 'Maximum 24 bottles per product')
