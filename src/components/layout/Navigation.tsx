@@ -7,6 +7,7 @@ import LanguageSwitch from '../ui/LanguageSwitch'
 import { useAuthModal } from '../auth/AuthModal'
 import { useAuth } from '../auth/AuthProvider'
 import { DomaineVallotLogo } from '../ui/DomaineVallotLogo'
+import { CartIconWithBadge, InlineCartCount } from '../ui/AnimatedCartBadge'
 import { useScrollHeader } from '@/hooks/useScrollHeader'
 import { cn } from '@/lib/utils'
 
@@ -19,7 +20,7 @@ export default function Navigation({
   currentLocale = 'en',
   cartItemCount = 0
 }: NavigationProps) {
-  const { user, signOut, loading, isAdmin } = useAuth()
+  const { user, signOut, loading, signingIn, isAdmin } = useAuth()
   const isAuthenticated = !!user
   const userName = user?.email?.split('@')[0] || ''
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -179,7 +180,12 @@ export default function Navigation({
             <div className="flex items-center space-x-3 border-l border-heritage-limestone-300/30 pl-6">
               {/* Account Menu */}
               <div className="relative" data-testid="account-menu">
-                {isAuthenticated ? (
+                {signingIn ? (
+                  <div className="flex items-center space-x-2 px-3 py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-heritage-rouge"></div>
+                    <span className="text-sm text-heritage-slate">Signing in...</span>
+                  </div>
+                ) : isAuthenticated ? (
                   <div className="relative" ref={userMenuRef}>
                     <button
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -249,32 +255,12 @@ export default function Navigation({
               {/* Cart */}
               <Link
                 href={`/${currentLocale}/cart`}
-                className={cn(
-                  "relative flex items-center justify-center w-10 h-10 rounded-full",
-                  "text-heritage-slate hover:text-heritage-rouge hover:bg-heritage-limestone-100/50",
-                  "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-heritage-golden/50 focus:ring-offset-2"
-                )}
                 data-testid="cart-link"
-                aria-label={`Shopping cart ${cartItemCount > 0 ? `with ${cartItemCount} items` : '(empty)'}`}
               >
-                <svg className="h-5 w-5 mx-auto my-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10l.938 10.314A2 2 0 0116.938 16H7.062a2 2 0 01-1.937-1.686L7 4z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9v2m3-2v2m3-2v2" />
-                </svg>
-                {cartItemCount > 0 && (
-                  <span
-                    className={cn(
-                      "absolute -top-1 -right-1 bg-heritage-rouge text-heritage-limestone text-xs rounded-full flex items-center justify-center font-bold shadow-lg",
-                      "transform transition-all duration-200 animate-pulse",
-                      cartItemCount > 99
-                        ? "h-6 w-8 px-1" // Wider for 99+
-                        : "h-5 w-5"      // Square for single/double digits
-                    )}
-                    data-testid="cart-badge"
-                  >
-                    {formatCartCount(cartItemCount)}
-                  </span>
-                )}
+                <CartIconWithBadge
+                  count={cartItemCount}
+                  aria-label={`Shopping cart ${cartItemCount > 0 ? `with ${cartItemCount} items` : '(empty)'}`}
+                />
               </Link>
             </div>
           </div>
@@ -338,7 +324,12 @@ export default function Navigation({
 
               {/* Mobile Account Section */}
               <div className="pt-4 border-t border-heritage-limestone-300/30">
-                {isAuthenticated ? (
+                {signingIn ? (
+                  <div className="px-4 py-4 flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-heritage-rouge"></div>
+                    <span className="text-base text-heritage-slate">Signing in...</span>
+                  </div>
+                ) : isAuthenticated ? (
                   <div className="space-y-3">
                     <div className="px-4 py-2">
                       <p className="text-sm text-heritage-slate font-medium">Hello, {userName}</p>
@@ -398,18 +389,7 @@ export default function Navigation({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9v2m3-2v2m3-2v2" />
                 </svg>
                 <span className="flex-1">{currentLocale === 'fr' ? 'Panier' : 'Cart'}</span>
-                {cartItemCount > 0 && (
-                  <span
-                    className={cn(
-                      "bg-heritage-rouge text-heritage-limestone text-xs rounded-full font-bold shadow-lg",
-                      cartItemCount > 99
-                        ? "px-2 py-1 min-w-[2rem]" // Wider for 99+
-                        : "px-2.5 py-1"            // Standard for single/double digits
-                    )}
-                  >
-                    {formatCartCount(cartItemCount)}
-                  </span>
-                )}
+                <InlineCartCount count={cartItemCount} locale={currentLocale} />
               </Link>
 
               {/* Mobile Language Switch */}

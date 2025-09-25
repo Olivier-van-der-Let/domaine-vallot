@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { EnhancedAddToCartButton } from './AddToCartButton'
 
 interface WineProductImage {
   id: string
@@ -279,17 +280,18 @@ export default function ProductDetail({
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={isAddingToCart || !product.in_stock}
-                      className="w-full bg-heritage-rouge-700 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-heritage-rouge-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
-                      data-testid="add-to-cart-button"
-                    >
-                      {isAddingToCart
-                        ? (locale === 'fr' ? 'Ajout en cours...' : 'Adding to Cart...')
-                        : (locale === 'fr' ? 'Ajouter au Panier' : 'Add to Cart')
-                      }
-                    </button>
+                    <EnhancedAddToCartButton
+                      product={product}
+                      quantity={quantity}
+                      onAdd={async (productId, qty) => {
+                        await handleAddToCart()
+                        return true // The actual success is handled by the parent handleAddToCart
+                      }}
+                      locale={locale}
+                      showStock={true}
+                      showVintage={true}
+                      disabled={isAddingToCart}
+                    />
                   </div>
                 )}
 

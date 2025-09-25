@@ -1,7 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { CartItemWithProduct, CartSummary, CartValidation } from '@/types'
+
+// Debounce utility for cart updates
+const useDebounce = (callback: Function, delay: number) => {
+  const timeoutRef = useRef<NodeJS.Timeout>()
+
+  return useCallback((...args: any[]) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = setTimeout(() => callback(...args), delay)
+  }, [callback, delay])
+}
 
 interface UseCartReturn {
   // State
@@ -36,6 +48,40 @@ export function useCart(): UseCartReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
+  const pendingUpdatesRef = useRef<Map<string, { quantity: number, timestamp: number }>>(new Map())
+
+  // Debounced server sync for batch updates
+  const debouncedSyncWithServer = useDebounce(async () => {
+    const pendingUpdates = Array.from(pendingUpdatesRef.current.entries())
+    if (pendingUpdates.length === 0) return
+
+    try {
+      // Process all pending updates
+      const updatePromises = pendingUpdates.map(([itemId, { quantity }]) =>
+        fetch(`/api/cart/${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ quantity })
+        })
+      )
+
+      const responses = await Promise.all(updatePromises)
+      const failedUpdates = responses.filter(r => !r.ok)
+
+      if (failedUpdates.length > 0) {
+        throw new Error('Some updates failed')
+      }
+
+      // Clear pending updates and refresh
+      pendingUpdatesRef.current.clear()
+      await fetchCart()
+    } catch (error) {
+      console.error('Batch update failed:', error)
+      // Force refresh to get server state
+      await fetchCart()
+    }
+  }, 1000) // 1 second debounce
 
   // Fetch cart data
   const fetchCart = useCallback(async () => {
@@ -74,12 +120,152 @@ export function useCart(): UseCartReturn {
     }
   }, [])
 
-  // Add item to cart
+  // Update item quantity with optimistic updates and debounced sync
+  const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<boolean> => {
+    if (quantity <= 0) {
+      // Handle remove by calling the API directly to avoid circular dependency
+      try {
+        setError(null)
+        setUpdating(itemId)
+
+        const response = await fetch(`/api/cart/${itemId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to remove item')
+        }
+
+        await fetchCart()
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to remove item')
+        return false
+      } finally {
+        setUpdating(null)
+      }
+    }
+
+    // Find the item to update
+    const itemToUpdate = items.find(item => item.id === itemId)
+    if (!itemToUpdate) {
+      setError('Item not found in cart')
+      return false
+    }
+
+    try {
+      setError(null)
+      setUpdating(itemId)
+
+      // Optimistic update - update UI immediately
+      const updatedItems = items.map(item => {
+        if (item.id === itemId) {
+          const updatedItem = {
+            ...item,
+            quantity,
+            subtotalEur: (item.product.priceEur || 0) * quantity
+          }
+          return updatedItem
+        }
+        return item
+      })
+
+      // Update summary optimistically
+      const newTotalQuantity = updatedItems.reduce((sum, item) => sum + item.quantity, 0)
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + (item.subtotalEur || 0), 0)
+      const updatedSummary = {
+        itemCount: updatedItems.length,
+        totalQuantity: newTotalQuantity,
+        subtotalEur: newSubtotal
+      }
+
+      // Apply optimistic updates
+      setItems(updatedItems)
+      setSummary(updatedSummary)
+
+      // Track pending update for debounced sync
+      pendingUpdatesRef.current.set(itemId, { quantity, timestamp: Date.now() })
+
+      // Trigger debounced server sync
+      debouncedSyncWithServer()
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update quantity')
+      return false
+    } finally {
+      setUpdating(null)
+    }
+  }, [items, summary, debouncedSyncWithServer, fetchCart])
+
+  // Remove item from cart with optimistic updates
+  const removeItem = useCallback(async (itemId: string): Promise<boolean> => {
+    // Store original values for rollback
+    const originalItems = [...items]
+    const originalSummary = { ...summary }
+
+    try {
+      setError(null)
+      setUpdating(itemId)
+
+      // Optimistic update - remove item from UI immediately
+      const updatedItems = items.filter(item => item.id !== itemId)
+
+      // Update summary optimistically
+      const newTotalQuantity = updatedItems.reduce((sum, item) => sum + item.quantity, 0)
+      const newSubtotal = updatedItems.reduce((sum, item) => sum + (item.subtotalEur || 0), 0)
+      const updatedSummary = {
+        itemCount: updatedItems.length,
+        totalQuantity: newTotalQuantity,
+        subtotalEur: newSubtotal
+      }
+
+      // Apply optimistic updates
+      setItems(updatedItems)
+      setSummary(updatedSummary)
+
+      // Make API call
+      const response = await fetch(`/api/cart/${itemId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to remove item')
+      }
+
+      // Refresh with server data to ensure consistency
+      await fetchCart()
+      return true
+    } catch (err) {
+      // Rollback optimistic updates on error
+      setItems(originalItems)
+      setSummary(originalSummary)
+      setError(err instanceof Error ? err.message : 'Failed to remove item')
+      return false
+    } finally {
+      setUpdating(null)
+    }
+  }, [items, summary, fetchCart])
+
+  // Add item to cart with optimistic updates
   const addItem = useCallback(async (productId: string, quantity: number = 1): Promise<boolean> => {
     try {
       setError(null)
       setUpdating(productId)
 
+      // Check if item already exists
+      const existingItem = items.find(item => item.productId === productId)
+
+      if (existingItem) {
+        // If item exists, update quantity instead
+        return await updateQuantity(existingItem.id, existingItem.quantity + quantity)
+      }
+
+      // Make API call first for new items (we need product data)
       const response = await fetch('/api/cart', {
         method: 'POST',
         headers: {
@@ -97,6 +283,7 @@ export function useCart(): UseCartReturn {
         throw new Error(errorData.error || 'Failed to add item to cart')
       }
 
+      // Refresh cart data to get the new item with full product details
       await fetchCart()
       return true
     } catch (err) {
@@ -105,67 +292,7 @@ export function useCart(): UseCartReturn {
     } finally {
       setUpdating(null)
     }
-  }, [fetchCart])
-
-  // Update item quantity
-  const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<boolean> => {
-    if (quantity <= 0) {
-      return await removeItem(itemId)
-    }
-
-    try {
-      setError(null)
-      setUpdating(itemId)
-
-      const response = await fetch(`/api/cart/${itemId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ quantity })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update quantity')
-      }
-
-      await fetchCart()
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update quantity')
-      return false
-    } finally {
-      setUpdating(null)
-    }
-  }, [fetchCart])
-
-  // Remove item from cart
-  const removeItem = useCallback(async (itemId: string): Promise<boolean> => {
-    try {
-      setError(null)
-      setUpdating(itemId)
-
-      const response = await fetch(`/api/cart/${itemId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to remove item')
-      }
-
-      await fetchCart()
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove item')
-      return false
-    } finally {
-      setUpdating(null)
-    }
-  }, [fetchCart])
+  }, [items, fetchCart, updateQuantity])
 
   // Clear entire cart
   const clearCart = useCallback(async (): Promise<boolean> => {

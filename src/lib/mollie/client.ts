@@ -1,4 +1,7 @@
 // Mollie payment service for wine e-commerce
+// Updated to use latest @mollie/api-client patterns
+
+import createMollieClient, { PaymentMethod, PaymentStatus, SequenceType } from '@mollie/api-client'
 
 export interface MolliePaymentData {
   orderId: string
@@ -11,7 +14,7 @@ export interface MolliePaymentData {
   webhookUrl: string
   metadata?: Record<string, any>
   locale?: 'en_US' | 'fr_FR' | 'de_DE' | 'es_ES' | 'it_IT' | 'nl_NL'
-  method?: MolliePaymentMethod[]
+  method?: PaymentMethod[]
 }
 
 export interface MolliePaymentMethod {
@@ -44,14 +47,8 @@ export interface MolliePayment {
   orderId?: string
 }
 
-export type MolliePaymentStatus =
-  | 'open'
-  | 'canceled'
-  | 'pending'
-  | 'authorized'
-  | 'expired'
-  | 'failed'
-  | 'paid'
+// Use official PaymentStatus enum from @mollie/api-client
+export type MolliePaymentStatus = PaymentStatus
 
 export interface MollieWebhookPayload {
   id: string
@@ -70,22 +67,26 @@ export interface MollieRefund {
 }
 
 class MollieClient {
+  private mollieClient: any
   private apiKey: string
-  private baseUrl: string
   private isTestMode: boolean
 
   constructor() {
     this.apiKey = process.env.MOLLIE_API_KEY || ''
     this.isTestMode = this.apiKey.startsWith('test_')
-    this.baseUrl = 'https://api.mollie.com/v2'
 
     if (!this.apiKey) {
       throw new Error('MOLLIE_API_KEY environment variable is required')
     }
+
+    // Use the official @mollie/api-client factory function
+    this.mollieClient = createMollieClient({
+      apiKey: this.apiKey,
+    })
   }
 
   /**
-   * Create a new payment
+   * Create a new payment using the official client
    */
   async createPayment(paymentData: MolliePaymentData): Promise<MolliePayment> {
     const payload = {
@@ -102,27 +103,54 @@ class MollieClient {
         ...paymentData.metadata
       },
       locale: paymentData.locale || 'en_US',
-      method: paymentData.method?.map(m => m.id)
+      method: paymentData.method || undefined
     }
 
-    const response = await this.makeRequest('POST', '/payments', payload)
-    return response as MolliePayment
+    try {
+      const payment = await this.mollieClient.payments.create(payload)
+      return this.transformPayment(payment)
+    } catch (error: any) {
+      throw new MollieError(
+        error.title || 'Payment creation failed',
+        error.status || 500,
+        error.detail || error.message || 'Unknown error',
+        error
+      )
+    }
   }
 
   /**
-   * Get payment details
+   * Get payment details using the official client
    */
   async getPayment(paymentId: string): Promise<MolliePayment> {
-    const response = await this.makeRequest('GET', `/payments/${paymentId}`)
-    return response as MolliePayment
+    try {
+      const payment = await this.mollieClient.payments.get(paymentId)
+      return this.transformPayment(payment)
+    } catch (error: any) {
+      throw new MollieError(
+        error.title || 'Payment fetch failed',
+        error.status || 500,
+        error.detail || error.message || 'Unknown error',
+        error
+      )
+    }
   }
 
   /**
-   * Cancel a payment
+   * Cancel a payment using the official client
    */
   async cancelPayment(paymentId: string): Promise<MolliePayment> {
-    const response = await this.makeRequest('DELETE', `/payments/${paymentId}`)
-    return response as MolliePayment
+    try {
+      const payment = await this.mollieClient.payments.cancel(paymentId)
+      return this.transformPayment(payment)
+    } catch (error: any) {
+      throw new MollieError(
+        error.title || 'Payment cancellation failed',
+        error.status || 500,
+        error.detail || error.message || 'Unknown error',
+        error
+      )
+    }
   }
 
   /**
@@ -152,31 +180,43 @@ class MollieClient {
   }
 
   /**
-   * Get available payment methods for amount and locale
+   * Get available payment methods using the official client
    */
   async getPaymentMethods(
     amount?: number,
     currency = 'EUR',
     locale?: string
   ): Promise<MolliePaymentMethod[]> {
-    let url = '/methods'
-    const params = new URLSearchParams()
+    try {
+      const options: any = {}
 
-    if (amount) {
-      params.append('amount[currency]', currency)
-      params.append('amount[value]', this.formatAmount(amount, currency))
+      if (amount) {
+        options.amount = {
+          currency,
+          value: this.formatAmount(amount, currency)
+        }
+      }
+
+      if (locale) {
+        options.locale = locale
+      }
+
+      const methodsResponse = await this.mollieClient.methods.list(options)
+      return methodsResponse.map((method: any) => ({
+        id: method.id,
+        name: method.description,
+        minimumAmount: method.minimumAmount ? parseFloat(method.minimumAmount.value) * 100 : undefined,
+        maximumAmount: method.maximumAmount ? parseFloat(method.maximumAmount.value) * 100 : undefined,
+        image: method.image?.size2x || method.image?.size1x
+      }))
+    } catch (error: any) {
+      throw new MollieError(
+        error.title || 'Payment methods fetch failed',
+        error.status || 500,
+        error.detail || error.message || 'Unknown error',
+        error
+      )
     }
-
-    if (locale) {
-      params.append('locale', locale)
-    }
-
-    if (params.toString()) {
-      url += `?${params.toString()}`
-    }
-
-    const response = await this.makeRequest('GET', url)
-    return response._embedded?.methods || []
   }
 
   /**
@@ -202,42 +242,44 @@ class MollieClient {
   }
 
   /**
-   * Check if payment is successful
+   * Check if payment is successful (using official enum)
    */
   isPaymentSuccessful(status: MolliePaymentStatus): boolean {
-    return status === 'paid' || status === 'authorized'
+    return status === PaymentStatus.paid || status === PaymentStatus.authorized
   }
 
   /**
-   * Check if payment is pending
+   * Check if payment is pending (using official enum)
    */
   isPaymentPending(status: MolliePaymentStatus): boolean {
-    return status === 'open' || status === 'pending'
+    return status === PaymentStatus.open || status === PaymentStatus.pending
   }
 
   /**
-   * Check if payment failed
+   * Check if payment failed (using official enum)
    */
   isPaymentFailed(status: MolliePaymentStatus): boolean {
-    return status === 'failed' || status === 'canceled' || status === 'expired'
+    return status === PaymentStatus.failed ||
+           status === PaymentStatus.canceled ||
+           status === PaymentStatus.expired
   }
 
   /**
-   * Get wine-appropriate payment methods
+   * Get wine-appropriate payment methods (using official enum)
    * Excludes methods not suitable for alcohol sales
    */
-  getWineCompatibleMethods(): string[] {
+  getWineCompatibleMethods(): PaymentMethod[] {
     return [
-      'ideal',          // iDEAL (Netherlands)
-      'creditcard',     // Credit card
-      'bancontact',     // Bancontact (Belgium)
-      'sofort',         // SOFORT Banking
-      'eps',            // EPS (Austria)
-      'giropay',        // Giropay (Germany)
-      'belfius',        // Belfius Pay Button (Belgium)
-      'paypal',         // PayPal
-      'applepay',       // Apple Pay
-      'przelewy24',     // Przelewy24 (Poland)
+      PaymentMethod.ideal,          // iDEAL (Netherlands)
+      PaymentMethod.creditcard,     // Credit card
+      PaymentMethod.bancontact,     // Bancontact (Belgium)
+      PaymentMethod.sofort,         // SOFORT Banking
+      PaymentMethod.eps,            // EPS (Austria)
+      PaymentMethod.giropay,        // Giropay (Germany)
+      PaymentMethod.belfius,        // Belfius Pay Button (Belgium)
+      PaymentMethod.paypal,         // PayPal
+      PaymentMethod.applepay,       // Apple Pay
+      PaymentMethod.przelewy24,     // Przelewy24 (Poland)
     ]
   }
 
@@ -251,54 +293,29 @@ class MollieClient {
   }
 
   /**
-   * Make HTTP request to Mollie API
+   * Transform Mollie API response to our internal format
    */
-  private async makeRequest(
-    method: 'GET' | 'POST' | 'DELETE',
-    endpoint: string,
-    body?: any
-  ): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}`
-
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
-    }
-
-    const config: RequestInit = {
-      method,
-      headers,
-    }
-
-    if (body) {
-      config.body = JSON.stringify(body)
-    }
-
-    try {
-      const response = await fetch(url, config)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new MollieError(
-          errorData.title || 'Payment API error',
-          response.status,
-          errorData.detail || response.statusText,
-          errorData
-        )
-      }
-
-      return await response.json()
-    } catch (error) {
-      if (error instanceof MollieError) {
-        throw error
-      }
-
-      throw new MollieError(
-        'Payment service unavailable',
-        500,
-        'Unable to connect to payment provider',
-        { originalError: error }
-      )
+  private transformPayment(payment: any): MolliePayment {
+    return {
+      id: payment.id,
+      status: payment.status as MolliePaymentStatus,
+      amount: {
+        value: payment.amount.value,
+        currency: payment.amount.currency
+      },
+      description: payment.description,
+      method: payment.method,
+      metadata: payment.metadata,
+      createdAt: payment.createdAt,
+      paidAt: payment.paidAt,
+      canceledAt: payment.canceledAt,
+      expiredAt: payment.expiredAt,
+      failedAt: payment.failedAt,
+      links: {
+        checkout: payment.getCheckoutUrl?.() || payment._links?.checkout?.href,
+        self: payment._links?.self?.href
+      },
+      orderId: payment.metadata?.orderId
     }
   }
 }
@@ -351,7 +368,7 @@ export const createWinePayment = async (orderData: {
     redirectUrl: `${baseUrl}/orders/${orderData.orderId}?payment=success`,
     webhookUrl: `${baseUrl}/api/webhooks/mollie`,
     locale: orderData.locale || 'en_US',
-    method: mollieClient.getWineCompatibleMethods().map(id => ({ id, name: id })),
+    method: mollieClient.getWineCompatibleMethods(),
     metadata: {
       orderType: 'wine',
       customerAge: 'verified' // Assume age verification completed
@@ -384,15 +401,15 @@ export const formatPaymentAmount = (amount: number, currency = 'EUR'): string =>
 // Payment status helpers for UI
 export const getPaymentStatusColor = (status: MolliePaymentStatus): string => {
   switch (status) {
-    case 'paid':
-    case 'authorized':
+    case PaymentStatus.paid:
+    case PaymentStatus.authorized:
       return 'green'
-    case 'open':
-    case 'pending':
+    case PaymentStatus.open:
+    case PaymentStatus.pending:
       return 'blue'
-    case 'failed':
-    case 'canceled':
-    case 'expired':
+    case PaymentStatus.failed:
+    case PaymentStatus.canceled:
+    case PaymentStatus.expired:
       return 'red'
     default:
       return 'gray'
@@ -401,19 +418,19 @@ export const getPaymentStatusColor = (status: MolliePaymentStatus): string => {
 
 export const getPaymentStatusLabel = (status: MolliePaymentStatus): string => {
   switch (status) {
-    case 'open':
+    case PaymentStatus.open:
       return 'Awaiting payment'
-    case 'paid':
+    case PaymentStatus.paid:
       return 'Paid'
-    case 'authorized':
+    case PaymentStatus.authorized:
       return 'Authorized'
-    case 'pending':
+    case PaymentStatus.pending:
       return 'Processing'
-    case 'canceled':
+    case PaymentStatus.canceled:
       return 'Canceled'
-    case 'expired':
+    case PaymentStatus.expired:
       return 'Expired'
-    case 'failed':
+    case PaymentStatus.failed:
       return 'Failed'
     default:
       return 'Unknown'

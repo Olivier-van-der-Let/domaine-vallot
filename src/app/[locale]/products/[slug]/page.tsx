@@ -2,6 +2,7 @@ import React from 'react'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductDetail from '@/components/product/ProductDetail'
+import ProductPageClient from './ProductPageClient'
 import { WineProduct } from '@/types'
 import { getProducts } from '@/lib/supabase/server'
 
@@ -356,7 +357,7 @@ export default async function ProductDetailPage({
           </span>
         </nav>
 
-        <ProductDetail
+        <ProductPageClient
           product={product}
           locale={locale}
           relatedProducts={relatedProducts}

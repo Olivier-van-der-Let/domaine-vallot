@@ -449,7 +449,7 @@ export const getCartItems = async (userId: string) => {
         *,
         wine_products (*)
       `)
-      .eq('user_id', userId)
+      .eq('customer_id', userId)
   })
 }
 
@@ -459,7 +459,7 @@ export const addToCart = async (userId: string, productId: string, quantity: num
     const { data: existingItem } = await supabase
       .from('cart_items')
       .select('*')
-      .eq('user_id', userId)
+      .eq('customer_id', userId)
       .eq('product_id', productId)
       .single()
 
@@ -476,7 +476,7 @@ export const addToCart = async (userId: string, productId: string, quantity: num
       return supabase
         .from('cart_items')
         .insert({
-          user_id: userId,
+          customer_id: userId,
           product_id: productId,
           quantity,
         })
@@ -492,7 +492,7 @@ export const updateCartItem = async (userId: string, itemId: string, quantity: n
       .from('cart_items')
       .update({ quantity })
       .eq('id', itemId)
-      .eq('user_id', userId)
+      .eq('customer_id', userId)
       .select()
       .single()
   })
@@ -504,7 +504,7 @@ export const removeFromCart = async (userId: string, itemId: string) => {
       .from('cart_items')
       .delete()
       .eq('id', itemId)
-      .eq('user_id', userId)
+      .eq('customer_id', userId)
   })
 }
 

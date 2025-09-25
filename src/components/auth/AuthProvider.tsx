@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import type { Customer } from '@/types'
@@ -13,6 +13,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   isAdmin: boolean
+  signingIn: boolean
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error?: string }>
   signOut: () => Promise<void>
@@ -32,20 +33,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signingIn, setSigningIn] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   // Get current session and user data
-  const getSession = async () => {
+  const getSession = async (retryCount = 0) => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
 
       if (error) {
         console.error('Session error:', error)
-        return
+        return false
       }
 
       setSession(session)
@@ -59,10 +64,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setCustomer(null)
         setIsAdmin(false)
       }
+
+      return !!session
     } catch (error) {
       console.error('Session fetch error:', error)
+      return false
     } finally {
-      setLoading(false)
+      if (retryCount === 0) {
+        setLoading(false)
+      }
     }
   }
 
@@ -137,8 +147,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  // Sign in
+  // Sign in with improved session synchronization
   const signIn = async (email: string, password: string) => {
+    setSigningIn(true)
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -154,17 +165,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { error: result.error || 'Login failed' }
       }
 
-      // Refresh the session to get the latest auth state
-      await getSession()
+      // Retry session refresh with exponential backoff to ensure auth state synchronization
+      let sessionFound = false
+      const maxRetries = 5
+
+      for (let attempt = 0; attempt < maxRetries && !sessionFound; attempt++) {
+        if (attempt > 0) {
+          // Wait with exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+          await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt - 1)))
+        }
+
+        sessionFound = await getSession(attempt)
+
+        if (sessionFound) {
+          console.log(`Session synchronized after ${attempt + 1} attempt(s)`)
+          break
+        }
+      }
+
+      if (!sessionFound) {
+        console.warn('Session not found after maximum retries, but login API succeeded')
+        // Force a final session refresh
+        await getSession()
+      }
 
       return {}
     } catch (error) {
       return { error: 'An unexpected error occurred' }
+    } finally {
+      setSigningIn(false)
     }
   }
 
-  // Sign up
+  // Sign up with improved session synchronization
   const signUp = async (email: string, password: string, metadata: any = {}) => {
+    setSigningIn(true)
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -185,12 +220,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { error: result.error || 'Registration failed' }
       }
 
-      // Refresh the session to get the latest auth state
-      await getSession()
+      // Retry session refresh with exponential backoff
+      let sessionFound = false
+      const maxRetries = 5
+
+      for (let attempt = 0; attempt < maxRetries && !sessionFound; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt - 1)))
+        }
+
+        sessionFound = await getSession(attempt)
+
+        if (sessionFound) {
+          console.log(`Registration session synchronized after ${attempt + 1} attempt(s)`)
+          break
+        }
+      }
+
+      if (!sessionFound) {
+        console.warn('Registration session not found after maximum retries')
+        await getSession()
+      }
 
       return {}
     } catch (error) {
       return { error: 'An unexpected error occurred' }
+    } finally {
+      setSigningIn(false)
     }
   }
 
@@ -351,6 +407,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     customer,
     session,
     loading,
+    signingIn,
     isAdmin,
     signIn,
     signUp,
