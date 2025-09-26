@@ -238,6 +238,141 @@ export const updateCartItemSchema = z.object({
 })
 
 // Product schemas (for admin)
+export const wineProductSchema = z.object({
+  sku: z.string()
+    .min(3, 'SKU must be at least 3 characters')
+    .max(50, 'SKU cannot exceed 50 characters')
+    .regex(/^[A-Z0-9-]+$/, 'SKU must contain only uppercase letters, numbers, and hyphens'),
+  name: z.string()
+    .min(3, 'Product name must be at least 3 characters')
+    .max(100, 'Product name cannot exceed 100 characters'),
+  vintage: z.number()
+    .min(1800, 'Vintage must be realistic')
+    .max(new Date().getFullYear() + 1, 'Vintage cannot be too far in the future')
+    .int('Vintage must be a whole number'),
+  varietal: z.string()
+    .min(2, 'Varietal must be at least 2 characters')
+    .max(100, 'Varietal cannot exceed 100 characters'),
+  region: z.string()
+    .max(100, 'Region name too long')
+    .optional(),
+  alcohol_content: z.number()
+    .min(0.5, 'Alcohol content must be at least 0.5%')
+    .max(20, 'Alcohol content cannot exceed 20%'),
+  volume_ml: z.number()
+    .min(187, 'Minimum volume is 187ml')
+    .max(3000, 'Maximum volume is 3000ml')
+    .int('Volume must be a whole number')
+    .default(750),
+  price_eur: z.number()
+    .min(0, 'Price cannot be negative')
+    .max(10000, 'Price cannot exceed €10,000.00'),
+  cost_eur: z.number()
+    .min(0, 'Cost cannot be negative')
+    .max(10000, 'Cost cannot exceed €10,000.00')
+    .optional(),
+  stock_quantity: z.number()
+    .min(0, 'Stock quantity cannot be negative')
+    .max(10000, 'Stock quantity cannot exceed 10,000')
+    .int('Stock quantity must be a whole number')
+    .default(0),
+  reserved_quantity: z.number()
+    .min(0, 'Reserved quantity cannot be negative')
+    .int('Reserved quantity must be a whole number')
+    .default(0),
+  reorder_level: z.number()
+    .min(0, 'Reorder level cannot be negative')
+    .int('Reorder level must be a whole number')
+    .optional(),
+  weight_grams: z.number()
+    .min(100, 'Weight must be at least 100g')
+    .max(5000, 'Weight cannot exceed 5kg')
+    .int('Weight must be a whole number')
+    .default(1200),
+  description_en: z.string()
+    .min(10, 'English description must be at least 10 characters')
+    .max(2000, 'English description cannot exceed 2000 characters'),
+  description_fr: z.string()
+    .min(10, 'French description must be at least 10 characters')
+    .max(2000, 'French description cannot exceed 2000 characters'),
+  tasting_notes_en: z.string()
+    .max(1000, 'English tasting notes cannot exceed 1000 characters')
+    .optional(),
+  tasting_notes_fr: z.string()
+    .max(1000, 'French tasting notes cannot exceed 1000 characters')
+    .optional(),
+  food_pairing_en: z.string()
+    .max(500, 'English food pairing cannot exceed 500 characters')
+    .optional(),
+  food_pairing_fr: z.string()
+    .max(500, 'French food pairing cannot exceed 500 characters')
+    .optional(),
+  production_notes_en: z.string()
+    .max(1000, 'English production notes cannot exceed 1000 characters')
+    .optional(),
+  production_notes_fr: z.string()
+    .max(1000, 'French production notes cannot exceed 1000 characters')
+    .optional(),
+  allergens: z.array(z.string()).optional(),
+  organic_certified: z.boolean().default(false),
+  biodynamic_certified: z.boolean().default(false),
+  vegan_friendly: z.boolean().default(false),
+  google_product_category: z.string().max(200).optional(),
+  meta_product_category: z.string().max(200).optional(),
+  is_active: z.boolean().default(true),
+  featured: z.boolean().default(false),
+  sort_order: z.number()
+    .min(0, 'Sort order cannot be negative')
+    .int('Sort order must be a whole number')
+    .default(0),
+  seo_title_en: z.string()
+    .max(60, 'English SEO title cannot exceed 60 characters')
+    .optional(),
+  seo_title_fr: z.string()
+    .max(60, 'French SEO title cannot exceed 60 characters')
+    .optional(),
+  seo_description_en: z.string()
+    .max(160, 'English SEO description cannot exceed 160 characters')
+    .optional(),
+  seo_description_fr: z.string()
+    .max(160, 'French SEO description cannot exceed 160 characters')
+    .optional(),
+  slug_en: z.string()
+    .min(3, 'English slug must be at least 3 characters')
+    .max(100, 'English slug cannot exceed 100 characters')
+    .regex(/^[a-z0-9-]+$/, 'English slug must contain only lowercase letters, numbers, and hyphens'),
+  slug_fr: z.string()
+    .min(3, 'French slug must be at least 3 characters')
+    .max(100, 'French slug cannot exceed 100 characters')
+    .regex(/^[a-z0-9-]+$/, 'French slug must contain only lowercase letters, numbers, and hyphens')
+})
+
+// Product image schema
+export const productImageSchema = z.object({
+  url: z.string().url('Please enter a valid image URL'),
+  alt_text_en: z.string()
+    .max(200, 'English alt text cannot exceed 200 characters')
+    .optional(),
+  alt_text_fr: z.string()
+    .max(200, 'French alt text cannot exceed 200 characters')
+    .optional(),
+  display_order: z.number()
+    .min(0, 'Display order cannot be negative')
+    .int('Display order must be a whole number')
+    .default(0),
+  image_type: z.enum(['bottle', 'label', 'vineyard', 'winemaker']).default('bottle'),
+  width: z.number().int().optional(),
+  height: z.number().int().optional(),
+  file_size: z.number().int().optional(),
+  is_primary: z.boolean().default(false)
+})
+
+// Update wine product schema (for PUT requests)
+export const updateWineProductSchema = wineProductSchema.partial().extend({
+  id: z.string().uuid('Invalid product ID')
+})
+
+// Legacy product schema for backward compatibility
 export const productSchema = z.object({
   name: z.string()
     .min(3, 'Product name must be at least 3 characters')
@@ -536,6 +671,9 @@ export type CheckoutData = z.infer<typeof completeCheckoutSchema>
 export type AddToCartData = z.infer<typeof addToCartSchema>
 export type UpdateCartItemData = z.infer<typeof updateCartItemSchema>
 export type ProductData = z.infer<typeof productSchema>
+export type WineProductData = z.infer<typeof wineProductSchema>
+export type UpdateWineProductData = z.infer<typeof updateWineProductSchema>
+export type ProductImageData = z.infer<typeof productImageSchema>
 export type OrderData = z.infer<typeof orderSchema>
 export type ContactFormData = z.infer<typeof contactFormSchema>
 export type WineContactFormData = z.infer<typeof wineContactFormSchema>

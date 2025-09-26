@@ -620,3 +620,423 @@ export const getVatRateByCountry = async (countryCode: string) => {
       .single()
   })
 }
+
+// ==============================================================================
+// ADMIN PRODUCT MANAGEMENT FUNCTIONS
+// ==============================================================================
+
+// Admin query helper - requires authentication
+export const safeAdminQuery = async <T>(
+  queryFn: (client: ServerSupabaseClient) => Promise<{ data: T; error: any }>,
+  userId?: string
+): Promise<T> => {
+  // Verify admin access
+  const adminUser = await getServerAdminUser()
+
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await queryFn(supabase)
+
+  if (error) {
+    console.error('Database query error:', error)
+
+    if (error.code === 'PGRST116') {
+      throw new Error('Resource not found')
+    }
+
+    if (error.code === '42501') {
+      throw new Error('Access denied')
+    }
+
+    throw new Error(error.message || 'Database query failed')
+  }
+
+  return data
+}
+
+// Get all products for admin (including inactive)
+export const getAdminProducts = async (options?: {
+  limit?: number
+  offset?: number
+  search?: string
+  category?: string
+  status?: 'active' | 'inactive' | 'all'
+  featured?: boolean
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}) => {
+  return safeAdminQuery(async (supabase) => {
+    let query = supabase
+      .from('wine_products')
+      .select(`
+        *,
+        product_images(
+          id,
+          url,
+          alt_text_en,
+          alt_text_fr,
+          is_primary,
+          display_order,
+          image_type
+        )
+      `)
+
+    // Filter by status
+    if (options?.status === 'active') {
+      query = query.eq('is_active', true)
+    } else if (options?.status === 'inactive') {
+      query = query.eq('is_active', false)
+    }
+    // 'all' means no filter on is_active
+
+    // Search functionality
+    if (options?.search) {
+      const searchTerm = options.search.toLowerCase()
+      query = query.or(`
+        name.ilike.%${searchTerm}%,
+        description_en.ilike.%${searchTerm}%,
+        description_fr.ilike.%${searchTerm}%,
+        varietal.ilike.%${searchTerm}%,
+        region.ilike.%${searchTerm}%,
+        sku.ilike.%${searchTerm}%
+      `)
+    }
+
+    if (options?.featured !== undefined) {
+      query = query.eq('featured', options.featured)
+    }
+
+    // Sorting
+    const sortBy = options?.sortBy || 'created_at'
+    const sortOrder = options?.sortOrder === 'asc' ? { ascending: true } : { ascending: false }
+    query = query.order(sortBy, sortOrder)
+
+    if (options?.limit) {
+      query = query.limit(options.limit)
+    }
+
+    if (options?.offset) {
+      query = query.range(options.offset, options.offset + (options.limit || 20) - 1)
+    }
+
+    return query
+  })
+}
+
+// Get single product for admin
+export const getAdminProductById = async (id: string) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('wine_products')
+      .select(`
+        *,
+        product_images(
+          id,
+          url,
+          alt_text_en,
+          alt_text_fr,
+          is_primary,
+          display_order,
+          image_type,
+          width,
+          height,
+          file_size
+        )
+      `)
+      .eq('id', id)
+      .single()
+  })
+}
+
+// Create new product
+export const createAdminProduct = async (productData: any, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // Add audit fields
+    const dataWithAudit = {
+      ...productData,
+      created_by: userId,
+      updated_by: userId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    return supabase
+      .from('wine_products')
+      .insert(dataWithAudit)
+      .select()
+      .single()
+  }, userId)
+}
+
+// Update existing product
+export const updateAdminProduct = async (id: string, productData: any, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // Add audit fields
+    const dataWithAudit = {
+      ...productData,
+      updated_by: userId,
+      updated_at: new Date().toISOString()
+    }
+
+    return supabase
+      .from('wine_products')
+      .update(dataWithAudit)
+      .eq('id', id)
+      .select()
+      .single()
+  }, userId)
+}
+
+// Soft delete product (set is_active to false)
+export const deleteAdminProduct = async (id: string, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // Check if product has pending orders
+    const { data: pendingOrders } = await supabase
+      .from('order_items')
+      .select(`
+        id,
+        orders!inner(
+          id,
+          status
+        )
+      `)
+      .eq('product_id', id)
+      .in('orders.status', ['pending', 'confirmed', 'processing'])
+
+    if (pendingOrders && pendingOrders.length > 0) {
+      throw new Error('Cannot delete product with pending orders')
+    }
+
+    // Soft delete by setting is_active to false
+    return supabase
+      .from('wine_products')
+      .update({
+        is_active: false,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+  }, userId)
+}
+
+// Hard delete product (actual deletion - use with caution)
+export const hardDeleteAdminProduct = async (id: string, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // Check if product has any orders
+    const { data: orders } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('product_id', id)
+
+    if (orders && orders.length > 0) {
+      throw new Error('Cannot permanently delete product with order history')
+    }
+
+    // Delete associated images first
+    await supabase
+      .from('product_images')
+      .delete()
+      .eq('product_id', id)
+
+    // Delete the product
+    return supabase
+      .from('wine_products')
+      .delete()
+      .eq('id', id)
+  }, userId)
+}
+
+// Product image management functions
+export const createProductImage = async (imageData: {
+  product_id: string
+  url: string
+  alt_text_en?: string
+  alt_text_fr?: string
+  display_order?: number
+  image_type?: string
+  width?: number
+  height?: number
+  file_size?: number
+  is_primary?: boolean
+}, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // If this is set as primary, unset other primary images for this product
+    if (imageData.is_primary) {
+      await supabase
+        .from('product_images')
+        .update({ is_primary: false })
+        .eq('product_id', imageData.product_id)
+    }
+
+    return supabase
+      .from('product_images')
+      .insert(imageData)
+      .select()
+      .single()
+  }, userId)
+}
+
+export const updateProductImage = async (imageId: string, imageData: any, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // If this is set as primary, unset other primary images for this product
+    if (imageData.is_primary) {
+      // First get the product_id
+      const { data: currentImage } = await supabase
+        .from('product_images')
+        .select('product_id')
+        .eq('id', imageId)
+        .single()
+
+      if (currentImage) {
+        await supabase
+          .from('product_images')
+          .update({ is_primary: false })
+          .eq('product_id', currentImage.product_id)
+          .neq('id', imageId)
+      }
+    }
+
+    return supabase
+      .from('product_images')
+      .update(imageData)
+      .eq('id', imageId)
+      .select()
+      .single()
+  }, userId)
+}
+
+export const deleteProductImage = async (imageId: string, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('product_images')
+      .delete()
+      .eq('id', imageId)
+  }, userId)
+}
+
+// Bulk operations
+export const bulkUpdateProductStatus = async (productIds: string[], isActive: boolean, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('wine_products')
+      .update({
+        is_active: isActive,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds)
+      .select()
+  }, userId)
+}
+
+export const bulkUpdateProductFeatured = async (productIds: string[], featured: boolean, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('wine_products')
+      .update({
+        featured: featured,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', productIds)
+      .select()
+  }, userId)
+}
+
+// Stock management
+export const updateProductStock = async (id: string, stockQuantity: number, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('wine_products')
+      .update({
+        stock_quantity: stockQuantity,
+        updated_by: userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+  }, userId)
+}
+
+// Get products with low stock
+export const getLowStockProducts = async (threshold: number = 10) => {
+  return safeAdminQuery(async (supabase) => {
+    return supabase
+      .from('wine_products')
+      .select('*')
+      .eq('is_active', true)
+      .lte('stock_quantity', threshold)
+      .order('stock_quantity', { ascending: true })
+  })
+}
+
+// Duplicate product
+export const duplicateProduct = async (id: string, userId: string) => {
+  return safeAdminQuery(async (supabase) => {
+    // Get the original product
+    const { data: originalProduct } = await supabase
+      .from('wine_products')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (!originalProduct) {
+      throw new Error('Product not found')
+    }
+
+    // Create new product data (remove id and update key fields)
+    const {
+      id: _,
+      created_at: __,
+      updated_at: ___,
+      created_by: ____,
+      updated_by: _____,
+      sku,
+      slug_en,
+      slug_fr,
+      ...productData
+    } = originalProduct
+
+    const newProductData = {
+      ...productData,
+      name: `${originalProduct.name} (Copy)`,
+      sku: `${sku}-COPY-${Date.now()}`,
+      slug_en: `${slug_en}-copy-${Date.now()}`,
+      slug_fr: `${slug_fr}-copy-${Date.now()}`,
+      is_active: false, // Start as inactive
+      featured: false, // Remove featured status
+      created_by: userId,
+      updated_by: userId
+    }
+
+    // Create the new product
+    const { data: newProduct } = await supabase
+      .from('wine_products')
+      .insert(newProductData)
+      .select()
+      .single()
+
+    // Copy images if they exist
+    const { data: originalImages } = await supabase
+      .from('product_images')
+      .select('*')
+      .eq('product_id', id)
+
+    if (originalImages && originalImages.length > 0) {
+      const newImages = originalImages.map(img => ({
+        ...img,
+        id: undefined,
+        product_id: newProduct.id,
+        created_at: undefined
+      }))
+
+      await supabase
+        .from('product_images')
+        .insert(newImages)
+    }
+
+    return { data: newProduct, error: null }
+  }, userId)
+}

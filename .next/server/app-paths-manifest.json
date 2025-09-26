@@ -1,1 +1,12 @@
-{}
+{
+  "/api/orders/route": "app/api/orders/route.js",
+  "/api/cart/route": "app/api/cart/route.js",
+  "/api/webhooks/mollie/route": "app/api/webhooks/mollie/route.js",
+  "/api/products/route": "app/api/products/route.js",
+  "/api/vat/calculate/route": "app/api/vat/calculate/route.js",
+  "/api/age-verification/route": "app/api/age-verification/route.js",
+  "/[locale]/page": "app/[locale]/page.js",
+  "/[locale]/admin/page": "app/[locale]/admin/page.js",
+  "/[locale]/admin/orders/page": "app/[locale]/admin/orders/page.js",
+  "/[locale]/admin/products/page": "app/[locale]/admin/products/page.js"
+}

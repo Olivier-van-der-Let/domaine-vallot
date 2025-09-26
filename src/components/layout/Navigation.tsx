@@ -210,24 +210,15 @@ export default function Navigation({
                     {userMenuOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                         <div className="py-1">
-                          {isAdmin && (
-                            <>
-                              <Link
-                                href={`/${currentLocale}/admin`}
-                                className="block px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors font-medium"
-                                onClick={() => setUserMenuOpen(false)}
-                              >
-                                🔧 {currentLocale === 'fr' ? 'Administration' : 'Admin Panel'}
-                              </Link>
-                              <hr className="my-1" />
-                            </>
-                          )}
                           <Link
-                            href={`/${currentLocale}/account`}
+                            href={isAdmin ? `/${currentLocale}/admin` : `/${currentLocale}/account`}
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                             onClick={() => setUserMenuOpen(false)}
                           >
-                            {currentLocale === 'fr' ? 'Mon Compte' : 'My Account'}
+                            {isAdmin
+                              ? (currentLocale === 'fr' ? 'Panneau d\'administration' : 'Admin Panel')
+                              : (currentLocale === 'fr' ? 'Mon Compte' : 'My Account')
+                            }
                           </Link>
                           <Link
                             href={`/${currentLocale}/orders`}
@@ -335,7 +326,7 @@ export default function Navigation({
                       <p className="text-sm text-heritage-slate font-medium">Hello, {userName}</p>
                     </div>
                     <Link
-                      href={`/${currentLocale}/account`}
+                      href={isAdmin ? `/${currentLocale}/admin` : `/${currentLocale}/account`}
                       className={cn(
                         "flex items-center px-4 py-4 text-base font-serif text-heritage-slate hover:text-heritage-rouge",
                         "hover:bg-heritage-limestone-100/60 rounded-lg transition-all duration-200",
@@ -346,9 +337,16 @@ export default function Navigation({
                       onClick={closeMobileMenu}
                     >
                       <svg className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        {isAdmin ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        )}
                       </svg>
-                      {currentLocale === 'fr' ? 'Mon compte' : 'My Account'}
+                      {isAdmin
+                        ? (currentLocale === 'fr' ? 'Panneau d\'administration' : 'Admin Panel')
+                        : (currentLocale === 'fr' ? 'Mon compte' : 'My Account')
+                      }
                     </Link>
                     <button
                       className={cn(
