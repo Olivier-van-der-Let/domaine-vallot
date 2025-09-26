@@ -17,6 +17,9 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: 'Domaine Vallot - Boutique Winery',
   description: 'Premium biodynamic wines from France, direct from our family vineyard',
+  icons: {
+    icon: 'https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/vallot-favicon-32x32.png',
+  },
 }
 
 export default function RootLayout({

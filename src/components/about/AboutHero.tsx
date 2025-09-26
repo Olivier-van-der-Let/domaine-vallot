@@ -38,7 +38,7 @@ export default function AboutHero({ locale }: AboutHeroProps) {
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src="https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/about-hero-family-vineyard.jpg"
+          src="https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/Team-vallot.jpg"
           alt={locale === 'fr'
             ? 'Famille Vallot dans les vignes de Vinsobres au coucher du soleil'
             : 'Vallot family in the Vinsobres vineyards at sunset'

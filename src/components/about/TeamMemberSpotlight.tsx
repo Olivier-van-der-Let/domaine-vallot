@@ -7,61 +7,79 @@ interface TeamMemberSpotlightProps {
 export default function TeamMemberSpotlight({ locale }: TeamMemberSpotlightProps) {
   const content = {
     fr: {
-      overline: 'Rencontrez Notre Équipe',
-      francoisSection: {
-        name: 'François Vallot',
-        title: 'Pionnier de la Biodynamie',
-        subtitle: 'Quatrième Génération',
-        description: 'Visionnaire et gardien de l\'héritage familial, François a transformé le domaine en adoptant l\'agriculture biodynamique dès les années 1990. Sa passion pour le terroir et son respect profond de la nature ont établi les fondements de notre philosophie actuelle.',
-        quote: '"Le vin doit exprimer la vérité de son terroir. Notre rôle est d\'accompagner cette expression, pas de la dominer."',
-        achievements: [
-          'Certification Ecocert (2003)',
-          'Certification Demeter (2007)',
-          'Pionnier biodynamique en Drôme',
-          '30 ans d\'innovation respectueuse'
+      overline: 'Notre Équipe',
+      hero: {
+        title: 'La Famille Vallot',
+        subtitle: 'Générations Unies par la Passion du Terroir',
+        description: 'Depuis cinq générations, la famille Vallot cultive les vignes avec passion et respect. François et Anaïs, père et fille, unissent leurs forces pour perpétuer l\'héritage familial tout en innovant vers l\'avenir. Ensemble, ils incarnent la parfaite harmonie entre tradition et modernité.',
+        quote: '"La force de notre domaine réside dans la transmission des savoirs entre générations et notre engagement commun envers l\'excellence biodynamique."'
+      },
+      collaboration: {
+        title: 'Une Collaboration Exceptionnelle',
+        description: 'L\'union des expériences de François, pionnier de la biodynamie depuis 30 ans, et d\'Anaïs, forte de son expertise internationale en hospitalité, crée une synergie unique. Cette collaboration multigénérationnelle permet au domaine de conjuguer savoir-faire ancestral et vision moderne.'
+      },
+      achievements: {
+        title: 'Nos Réalisations Collectives',
+        items: [
+          {
+            title: 'Certifications Biodynamiques',
+            description: 'Ecocert (2003) et Demeter (2007) - Pionniers en Drôme'
+          },
+          {
+            title: 'Innovation & Tradition',
+            description: '30 ans d\'excellence biodynamique avec vision internationale'
+          },
+          {
+            title: 'Leadership Familial',
+            description: 'Transmission réussie vers la 5ème génération'
+          },
+          {
+            title: 'Reconnaissance Mondiale',
+            description: 'Expertise reconnue du terroir aux marchés internationaux'
+          }
         ]
       },
-      anaisSection: {
-        name: 'Anaïs Vallot',
-        title: 'Vision Globale, Racines Locales',
-        subtitle: 'Cinquième Génération',
-        description: 'Après une carrière internationale dans l\'hôtellerie de luxe (Four Seasons, hôtel 5 étoiles à Genève), Anaïs a choisi de revenir à ses racines en 2013. Son expertise en hospitalité et sa formation au Château d\'Yquem apportent une dimension nouvelle au domaine.',
-        quote: '"J\'ai parcouru le monde pour comprendre l\'excellence. Aujourd\'hui, je la cultive dans nos vignes."',
-        achievements: [
-          'Formation Four Seasons International',
-          'Stage Château d\'Yquem',
-          'Management hôtellerie 5 étoiles',
-          'Première femme à diriger le domaine'
-        ]
+      philosophy: {
+        title: 'Notre Philosophie Commune',
+        description: 'Nous croyons que l\'excellence naît de la collaboration harmonieuse entre générations. Chaque décision est prise ensemble, chaque innovation respecte notre héritage, et chaque vin reflète notre vision partagée du terroir.'
       }
     },
     en: {
-      overline: 'Meet Our Team',
-      francoisSection: {
-        name: 'François Vallot',
-        title: 'Pioneer of Biodynamics',
-        subtitle: 'Fourth Generation',
-        description: 'Visionary and guardian of the family heritage, François transformed the domain by adopting biodynamic agriculture from the 1990s. His passion for terroir and deep respect for nature established the foundations of our current philosophy.',
-        quote: '"Wine must express the truth of its terroir. Our role is to accompany this expression, not to dominate it."',
-        achievements: [
-          'Ecocert Certification (2003)',
-          'Demeter Certification (2007)',
-          'Biodynamic Pioneer in Drôme',
-          '30 years of respectful innovation'
+      overline: 'Our Team',
+      hero: {
+        title: 'The Vallot Family',
+        subtitle: 'Generations United by Passion for Terroir',
+        description: 'For five generations, the Vallot family has cultivated vines with passion and respect. François and Anaïs, father and daughter, unite their strengths to perpetuate the family heritage while innovating toward the future. Together, they embody the perfect harmony between tradition and modernity.',
+        quote: '"The strength of our domain lies in the transmission of knowledge between generations and our shared commitment to biodynamic excellence."'
+      },
+      collaboration: {
+        title: 'An Exceptional Collaboration',
+        description: 'The union of François\' experience, a biodynamic pioneer for 30 years, and Anaïs\' international hospitality expertise creates a unique synergy. This multigenerational collaboration allows the domain to combine ancestral know-how with modern vision.'
+      },
+      achievements: {
+        title: 'Our Collective Achievements',
+        items: [
+          {
+            title: 'Biodynamic Certifications',
+            description: 'Ecocert (2003) and Demeter (2007) - Pioneers in Drôme'
+          },
+          {
+            title: 'Innovation & Tradition',
+            description: '30 years of biodynamic excellence with international vision'
+          },
+          {
+            title: 'Family Leadership',
+            description: 'Successful transmission to the 5th generation'
+          },
+          {
+            title: 'Global Recognition',
+            description: 'Expertise recognized from terroir to international markets'
+          }
         ]
       },
-      anaisSection: {
-        name: 'Anaïs Vallot',
-        title: 'Global Vision, Local Roots',
-        subtitle: 'Fifth Generation',
-        description: 'After an international career in luxury hospitality (Four Seasons, 5-star hotel in Geneva), Anaïs chose to return to her roots in 2013. Her hospitality expertise and training at Château d\'Yquem bring a new dimension to the domain.',
-        quote: '"I traveled the world to understand excellence. Today, I cultivate it in our vines."',
-        achievements: [
-          'Four Seasons International Training',
-          'Château d\'Yquem Internship',
-          '5-star Hotel Management',
-          'First woman to lead the domain'
-        ]
+      philosophy: {
+        title: 'Our Shared Philosophy',
+        description: 'We believe that excellence is born from harmonious collaboration between generations. Every decision is made together, every innovation respects our heritage, and every wine reflects our shared vision of terroir.'
       }
     }
   }
@@ -78,136 +96,132 @@ export default function TeamMemberSpotlight({ locale }: TeamMemberSpotlightProps
           </p>
         </div>
 
-        <div className="space-y-24">
-          {/* François Vallot */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Photo */}
-            <div className="relative">
-              <div className="aspect-[4/5] rounded-lg overflow-hidden shadow-2xl">
-                <img
-                  src="https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/team/francois-vallot-portrait.jpg"
-                  alt={`${text.francoisSection.name} in vineyard`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              {/* Decorative Element */}
-              <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-heritage-golden-100 rounded-lg -z-10"></div>
+        {/* Hero Team Section */}
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24">
+          {/* Team Photo */}
+          <div className="relative">
+            <div className="aspect-[4/3] rounded-lg overflow-hidden shadow-2xl">
+              <img
+                src="https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/decorative/Team-vallot.jpg"
+                alt="François and Anaïs Vallot working together in vineyard"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
             </div>
-
-            {/* Content */}
-            <div className="space-y-6">
-              <div>
-                <p className="text-heritage-rouge-600 font-medium text-sm tracking-wider uppercase mb-2">
-                  {text.francoisSection.subtitle}
-                </p>
-                <h3 className="font-serif text-3xl lg:text-4xl font-bold text-heritage-slate-900 mb-2">
-                  {text.francoisSection.name}
-                </h3>
-                <p className="text-heritage-golden-600 font-serif text-xl font-medium">
-                  {text.francoisSection.title}
-                </p>
-              </div>
-
-              <p className="text-heritage-slate-700 text-lg leading-relaxed">
-                {text.francoisSection.description}
-              </p>
-
-              {/* Quote */}
-              <blockquote className="border-l-4 border-heritage-rouge-500 pl-6 py-4 bg-heritage-rouge-50 rounded-r-lg">
-                <p className="text-heritage-rouge-800 font-serif text-lg italic leading-relaxed">
-                  {text.francoisSection.quote}
-                </p>
-              </blockquote>
-
-              {/* Achievements */}
-              <div>
-                <h4 className="font-semibold text-heritage-slate-800 mb-3">
-                  {locale === 'fr' ? 'Réalisations Clés' : 'Key Achievements'}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {text.francoisSection.achievements.map((achievement, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-heritage-rouge-500 flex-shrink-0"></div>
-                      <span className="text-heritage-slate-600 text-sm">{achievement}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Decorative Elements */}
+            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-heritage-golden-100 rounded-lg -z-10"></div>
+            <div className="absolute -top-4 -left-4 w-20 h-20 bg-heritage-olive-100 rounded-lg -z-10"></div>
           </div>
 
-          {/* Anaïs Vallot - Reversed Layout */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Content - Left on Desktop */}
-            <div className="space-y-6 lg:order-1">
-              <div>
-                <p className="text-heritage-golden-600 font-medium text-sm tracking-wider uppercase mb-2">
-                  {text.anaisSection.subtitle}
-                </p>
-                <h3 className="font-serif text-3xl lg:text-4xl font-bold text-heritage-slate-900 mb-2">
-                  {text.anaisSection.name}
-                </h3>
-                <p className="text-heritage-olive-600 font-serif text-xl font-medium">
-                  {text.anaisSection.title}
-                </p>
-              </div>
-
-              <p className="text-heritage-slate-700 text-lg leading-relaxed">
-                {text.anaisSection.description}
+          {/* Hero Content */}
+          <div className="space-y-8">
+            <div>
+              <p className="text-heritage-rouge-600 font-medium text-sm tracking-wider uppercase mb-3">
+                {text.hero.subtitle}
               </p>
+              <h2 className="font-serif text-4xl lg:text-5xl font-bold text-heritage-slate-900 mb-4">
+                {text.hero.title}
+              </h2>
+            </div>
 
-              {/* Quote */}
-              <blockquote className="border-l-4 border-heritage-golden-500 pl-6 py-4 bg-heritage-golden-50 rounded-r-lg">
-                <p className="text-heritage-golden-800 font-serif text-lg italic leading-relaxed">
-                  {text.anaisSection.quote}
-                </p>
-              </blockquote>
+            <p className="text-heritage-slate-700 text-xl leading-relaxed">
+              {text.hero.description}
+            </p>
 
-              {/* Achievements */}
-              <div>
-                <h4 className="font-semibold text-heritage-slate-800 mb-3">
-                  {locale === 'fr' ? 'Réalisations Clés' : 'Key Achievements'}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {text.anaisSection.achievements.map((achievement, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-heritage-golden-500 flex-shrink-0"></div>
-                      <span className="text-heritage-slate-600 text-sm">{achievement}</span>
-                    </div>
-                  ))}
+            {/* Team Quote */}
+            <blockquote className="border-l-4 border-heritage-golden-500 pl-6 py-6 bg-heritage-golden-50 rounded-r-lg">
+              <p className="text-heritage-golden-800 font-serif text-xl italic leading-relaxed">
+                {text.hero.quote}
+              </p>
+              <footer className="mt-4 text-heritage-golden-700 font-medium">
+                — {locale === 'fr' ? 'François & Anaïs Vallot' : 'François & Anaïs Vallot'}
+              </footer>
+            </blockquote>
+          </div>
+        </div>
+
+        {/* Collaboration Section */}
+        <div className="mb-20">
+          <div className="max-w-4xl mx-auto text-center">
+            <h3 className="font-serif text-3xl lg:text-4xl font-bold text-heritage-slate-900 mb-8">
+              {text.collaboration.title}
+            </h3>
+            <p className="text-heritage-slate-700 text-lg leading-relaxed">
+              {text.collaboration.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Collective Achievements */}
+        <div className="mb-20">
+          <h3 className="font-serif text-3xl lg:text-4xl font-bold text-heritage-slate-900 text-center mb-12">
+            {text.achievements.title}
+          </h3>
+          <div className="grid md:grid-cols-2 gap-8">
+            {text.achievements.items.map((achievement, index) => (
+              <div
+                key={index}
+                className="bg-heritage-limestone-50 rounded-lg p-6 hover:shadow-lg transition-shadow duration-300"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-3 h-3 rounded-full bg-heritage-rouge-500 flex-shrink-0 mt-2"></div>
+                  <div>
+                    <h4 className="font-semibold text-heritage-slate-900 text-lg mb-2">
+                      {achievement.title}
+                    </h4>
+                    <p className="text-heritage-slate-600 leading-relaxed">
+                      {achievement.description}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Photo - Right on Desktop */}
-            <div className="relative lg:order-2">
-              <div className="aspect-[4/5] rounded-lg overflow-hidden shadow-2xl">
-                <img
-                  src="https://vmtudbupajnjyauvqnej.supabase.co/storage/v1/object/public/Public/team/anais-vallot-portrait.jpg"
-                  alt={`${text.anaisSection.name} in cellar`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              {/* Decorative Element */}
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-heritage-olive-100 rounded-lg -z-10"></div>
-            </div>
+            ))}
           </div>
         </div>
 
         {/* Team Philosophy */}
-        <div className="mt-24 text-center">
-          <div className="max-w-3xl mx-auto bg-heritage-limestone-50 rounded-lg p-8 lg:p-12">
-            <h3 className="font-serif text-2xl lg:text-3xl font-bold text-heritage-slate-900 mb-6">
-              {locale === 'fr' ? 'Notre Philosophie d\'Équipe' : 'Our Team Philosophy'}
+        <div className="text-center">
+          <div className="max-w-4xl mx-auto bg-gradient-to-r from-heritage-olive-50 to-heritage-golden-50 rounded-lg p-8 lg:p-12">
+            <h3 className="font-serif text-3xl lg:text-4xl font-bold text-heritage-slate-900 mb-8">
+              {text.philosophy.title}
             </h3>
-            <p className="text-heritage-slate-700 text-lg leading-relaxed">
-              {locale === 'fr'
-                ? 'Ensemble, nous formons plus qu\'une équipe - nous sommes une famille unie par la passion du terroir et le respect de notre héritage. Chaque membre apporte son expertise unique, créant une harmonie qui se reflète dans chacun de nos vins.'
-                : 'Together, we form more than a team - we are a family united by passion for terroir and respect for our heritage. Each member brings their unique expertise, creating a harmony that is reflected in each of our wines.'
-              }
+            <p className="text-heritage-slate-700 text-xl leading-relaxed">
+              {text.philosophy.description}
             </p>
+
+            {/* Heritage Timeline */}
+            <div className="mt-12 flex justify-center items-center space-x-8 text-center">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-heritage-rouge-100 rounded-full flex items-center justify-center mb-3">
+                  <span className="font-serif font-bold text-heritage-rouge-700 text-lg">4e</span>
+                </div>
+                <p className="text-heritage-slate-600 font-medium text-sm">
+                  {locale === 'fr' ? 'François' : 'François'}
+                </p>
+              </div>
+
+              <div className="w-12 h-0.5 bg-heritage-golden-300"></div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-20 h-20 bg-heritage-golden-100 rounded-full flex items-center justify-center mb-3 border-4 border-heritage-golden-200">
+                  <span className="font-serif font-bold text-heritage-golden-700 text-xl">❤️</span>
+                </div>
+                <p className="text-heritage-slate-600 font-medium text-sm">
+                  {locale === 'fr' ? 'Collaboration' : 'Collaboration'}
+                </p>
+              </div>
+
+              <div className="w-12 h-0.5 bg-heritage-golden-300"></div>
+
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-heritage-olive-100 rounded-full flex items-center justify-center mb-3">
+                  <span className="font-serif font-bold text-heritage-olive-700 text-lg">5e</span>
+                </div>
+                <p className="text-heritage-slate-600 font-medium text-sm">
+                  {locale === 'fr' ? 'Anaïs' : 'Anaïs'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
