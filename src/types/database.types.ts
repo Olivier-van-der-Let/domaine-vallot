@@ -611,6 +611,272 @@ export type Database = {
           updated_by?: string | null
         }
       }
+      contact_inquiries: {
+        Row: {
+          id: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string | null
+          company: string | null
+          inquiry_type: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry'
+          group_size: number | null
+          preferred_date: string | null
+          message: string
+          wine_preferences: string | null
+          budget_range: string | null
+          special_requirements: string | null
+          status: 'new' | 'assigned' | 'in_progress' | 'awaiting_customer' | 'resolved' | 'closed' | 'spam'
+          priority: 'low' | 'normal' | 'high' | 'urgent'
+          assigned_to: string | null
+          response_sent_at: string | null
+          internal_notes: string | null
+          age_verified: boolean
+          privacy_accepted: boolean
+          marketing_consent: boolean
+          data_processing_consent: boolean
+          consent_timestamp: string
+          consent_ip_address: string | null
+          honeypot_field: string | null
+          submission_ip: string | null
+          user_agent: string | null
+          referrer: string | null
+          spam_score: number
+          is_spam: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+          deleted_at: string | null
+          deletion_reason: string | null
+          auto_response_sent: boolean
+          auto_response_sent_at: string | null
+          follow_up_required: boolean
+          follow_up_date: string | null
+          appointment_scheduled: boolean
+          appointment_date: string | null
+        }
+        Insert: {
+          id?: string
+          first_name: string
+          last_name: string
+          email: string
+          phone?: string | null
+          company?: string | null
+          inquiry_type: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry'
+          group_size?: number | null
+          preferred_date?: string | null
+          message: string
+          wine_preferences?: string | null
+          budget_range?: string | null
+          special_requirements?: string | null
+          status?: 'new' | 'assigned' | 'in_progress' | 'awaiting_customer' | 'resolved' | 'closed' | 'spam'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          assigned_to?: string | null
+          response_sent_at?: string | null
+          internal_notes?: string | null
+          age_verified?: boolean
+          privacy_accepted: boolean
+          marketing_consent?: boolean
+          data_processing_consent?: boolean
+          consent_timestamp?: string
+          consent_ip_address?: string | null
+          honeypot_field?: string | null
+          submission_ip?: string | null
+          user_agent?: string | null
+          referrer?: string | null
+          spam_score?: number
+          is_spam?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          deleted_at?: string | null
+          deletion_reason?: string | null
+          auto_response_sent?: boolean
+          auto_response_sent_at?: string | null
+          follow_up_required?: boolean
+          follow_up_date?: string | null
+          appointment_scheduled?: boolean
+          appointment_date?: string | null
+        }
+        Update: {
+          id?: string
+          first_name?: string
+          last_name?: string
+          email?: string
+          phone?: string | null
+          company?: string | null
+          inquiry_type?: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry'
+          group_size?: number | null
+          preferred_date?: string | null
+          message?: string
+          wine_preferences?: string | null
+          budget_range?: string | null
+          special_requirements?: string | null
+          status?: 'new' | 'assigned' | 'in_progress' | 'awaiting_customer' | 'resolved' | 'closed' | 'spam'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          assigned_to?: string | null
+          response_sent_at?: string | null
+          internal_notes?: string | null
+          age_verified?: boolean
+          privacy_accepted?: boolean
+          marketing_consent?: boolean
+          data_processing_consent?: boolean
+          consent_timestamp?: string
+          consent_ip_address?: string | null
+          honeypot_field?: string | null
+          submission_ip?: string | null
+          user_agent?: string | null
+          referrer?: string | null
+          spam_score?: number
+          is_spam?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          deleted_at?: string | null
+          deletion_reason?: string | null
+          auto_response_sent?: boolean
+          auto_response_sent_at?: string | null
+          follow_up_required?: boolean
+          follow_up_date?: string | null
+          appointment_scheduled?: boolean
+          appointment_date?: string | null
+        }
+      }
+      inquiry_response_templates: {
+        Row: {
+          id: string
+          name: string
+          inquiry_type: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry' | null
+          language: string
+          subject_template: string
+          body_template: string
+          is_active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          inquiry_type?: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry' | null
+          language?: string
+          subject_template: string
+          body_template: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          inquiry_type?: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry' | null
+          language?: string
+          subject_template?: string
+          body_template?: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+      }
+      inquiry_communications: {
+        Row: {
+          id: string
+          inquiry_id: string
+          communication_type: string
+          direction: string
+          subject: string | null
+          message: string
+          sent_by: string | null
+          email_message_id: string | null
+          created_at: string
+          email_template_id: string | null
+          email_sent_successfully: boolean | null
+          email_delivery_status: string | null
+          email_opened_at: string | null
+          email_clicked_at: string | null
+        }
+        Insert: {
+          id?: string
+          inquiry_id: string
+          communication_type: string
+          direction: string
+          subject?: string | null
+          message: string
+          sent_by?: string | null
+          email_message_id?: string | null
+          created_at?: string
+          email_template_id?: string | null
+          email_sent_successfully?: boolean | null
+          email_delivery_status?: string | null
+          email_opened_at?: string | null
+          email_clicked_at?: string | null
+        }
+        Update: {
+          id?: string
+          inquiry_id?: string
+          communication_type?: string
+          direction?: string
+          subject?: string | null
+          message?: string
+          sent_by?: string | null
+          email_message_id?: string | null
+          created_at?: string
+          email_template_id?: string | null
+          email_sent_successfully?: boolean | null
+          email_delivery_status?: string | null
+          email_opened_at?: string | null
+          email_clicked_at?: string | null
+        }
+      }
+      inquiry_data_processing_log: {
+        Row: {
+          id: string
+          inquiry_id: string
+          processing_activity: string
+          legal_basis: string
+          purpose: string
+          data_categories: string[]
+          processed_by: string
+          processed_at: string
+          retention_period: string | null
+          automatic_deletion_date: string | null
+        }
+        Insert: {
+          id?: string
+          inquiry_id: string
+          processing_activity: string
+          legal_basis: string
+          purpose: string
+          data_categories: string[]
+          processed_by: string
+          processed_at?: string
+          retention_period?: string | null
+          automatic_deletion_date?: string | null
+        }
+        Update: {
+          id?: string
+          inquiry_id?: string
+          processing_activity?: string
+          legal_basis?: string
+          purpose?: string
+          data_categories?: string[]
+          processed_by?: string
+          processed_at?: string
+          retention_period?: string | null
+          automatic_deletion_date?: string | null
+        }
+      }
     }
     Views: {
       cart_items_with_products: {
@@ -743,6 +1009,46 @@ export type Database = {
           error_message: string
           invalid_items: Json
         }[]
+      }
+      process_contact_submission: {
+        Args: {
+          p_first_name: string
+          p_last_name: string
+          p_email: string
+          p_phone?: string
+          p_company?: string
+          p_inquiry_type: 'wine_tasting' | 'group_visit' | 'wine_orders' | 'business_partnership' | 'press_media' | 'general_inquiry'
+          p_group_size?: number
+          p_preferred_date?: string
+          p_message: string
+          p_marketing_consent?: boolean
+          p_honeypot?: string
+          p_ip_address?: string
+          p_user_agent?: string
+          p_referrer?: string
+        }
+        Returns: string
+      }
+      get_inquiry_statistics: {
+        Args: {}
+        Returns: {
+          total_inquiries: number
+          new_inquiries: number
+          in_progress_inquiries: number
+          resolved_inquiries: number
+          spam_inquiries: number
+          high_priority_inquiries: number
+          overdue_followups: number
+          tasting_requests: number
+          group_visit_requests: number
+          business_inquiries: number
+        }[]
+      }
+      anonymize_inquiry_data: {
+        Args: {
+          p_inquiry_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

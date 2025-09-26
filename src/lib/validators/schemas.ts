@@ -321,6 +321,110 @@ export const contactFormSchema = z.object({
   category: z.enum(['general', 'orders', 'products', 'shipping', 'returns', 'technical']).optional()
 })
 
+// Wine estate contact form schema - specialized for Domaine Vallot
+const frenchPhoneSchema = z.string().regex(
+  /^(\+33|0)[1-9](\d{8})$/,
+  'Veuillez entrer un numéro de téléphone français valide (ex: 01 23 45 67 89)'
+).optional()
+
+export const wineContactFormSchema = z.object({
+  firstName: z.string()
+    .min(2, 'Le prénom doit contenir au moins 2 caractères')
+    .max(50, 'Le prénom ne peut pas dépasser 50 caractères')
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Le prénom contient des caractères invalides'),
+  lastName: z.string()
+    .min(2, 'Le nom doit contenir au moins 2 caractères')
+    .max(50, 'Le nom ne peut pas dépasser 50 caractères')
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Le nom contient des caractères invalides'),
+  email: z.string()
+    .email('Veuillez entrer une adresse email valide')
+    .max(255, 'L\'adresse email est trop longue'),
+  phone: frenchPhoneSchema,
+  company: z.string()
+    .max(100, 'Le nom de la société ne peut pas dépasser 100 caractères')
+    .optional(),
+  inquiryType: z.enum([
+    'wine_tasting',
+    'group_visit',
+    'wine_orders',
+    'business_partnership',
+    'press_media',
+    'general_inquiry'
+  ], {
+    errorMap: () => ({ message: 'Veuillez sélectionner le type de demande' })
+  }),
+  groupSize: z.number()
+    .min(1, 'Le nombre de personnes doit être d\'au moins 1')
+    .max(50, 'Nous ne pouvons accueillir plus de 50 personnes par groupe')
+    .int('Le nombre de personnes doit être un nombre entier')
+    .optional(),
+  preferredDate: z.string()
+    .refine(
+      (date) => {
+        if (!date) return true // Optional field
+        const selectedDate = new Date(date)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return selectedDate >= today
+      },
+      'La date préférée ne peut pas être dans le passé'
+    )
+    .optional(),
+  message: z.string()
+    .min(20, 'Votre message doit contenir au moins 20 caractères')
+    .max(1500, 'Votre message ne peut pas dépasser 1500 caractères')
+    .refine(
+      (msg) => !/<[^>]*>/g.test(msg),
+      'Le message ne peut pas contenir de HTML'
+    ),
+  // Wine-specific fields
+  winePreferences: z.string()
+    .max(300, 'Les préférences vinicoles ne peuvent pas dépasser 300 caractères')
+    .optional(),
+  budgetRange: z.string()
+    .max(50, 'La fourchette budgétaire ne peut pas dépasser 50 caractères')
+    .optional(),
+  specialRequirements: z.string()
+    .max(300, 'Les exigences spéciales ne peuvent pas dépasser 300 caractères')
+    .optional(),
+  // Compliance fields
+  ageVerified: z.boolean().refine(
+    val => val === true,
+    'Vous devez confirmer avoir l\'âge légal pour consommer de l\'alcool'
+  ),
+  privacyAccepted: z.boolean().refine(
+    val => val === true,
+    'Vous devez accepter la politique de confidentialité'
+  ),
+  marketingConsent: z.boolean().optional(),
+  // Anti-spam field (honeypot)
+  website: z.string().max(0, 'Ce champ doit rester vide').optional(),
+}).refine(
+  (data) => {
+    // Require group size for group visits and tastings
+    if (['wine_tasting', 'group_visit'].includes(data.inquiryType)) {
+      return data.groupSize && data.groupSize >= 1
+    }
+    return true
+  },
+  {
+    message: 'Le nombre de personnes est requis pour les dégustations et visites de groupe',
+    path: ['groupSize']
+  }
+).refine(
+  (data) => {
+    // Validate business partnership requires company name
+    if (data.inquiryType === 'business_partnership') {
+      return data.company && data.company.trim().length >= 2
+    }
+    return true
+  },
+  {
+    message: 'Le nom de la société est requis pour les partenariats commerciaux',
+    path: ['company']
+  }
+)
+
 // Newsletter subscription schema
 export const newsletterSchema = z.object({
   email: emailSchema,
@@ -434,6 +538,7 @@ export type UpdateCartItemData = z.infer<typeof updateCartItemSchema>
 export type ProductData = z.infer<typeof productSchema>
 export type OrderData = z.infer<typeof orderSchema>
 export type ContactFormData = z.infer<typeof contactFormSchema>
+export type WineContactFormData = z.infer<typeof wineContactFormSchema>
 export type NewsletterData = z.infer<typeof newsletterSchema>
 export type AdminLoginData = z.infer<typeof adminLoginSchema>
 export type InventoryAdjustmentData = z.infer<typeof inventoryAdjustmentSchema>

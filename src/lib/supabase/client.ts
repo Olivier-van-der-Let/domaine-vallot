@@ -31,6 +31,10 @@ export type CartItem = Tables<'cart_items'>
 export type VatRate = Tables<'vat_rates'>
 export type WineCertification = Tables<'wine_certifications'>
 export type ContentPage = Tables<'content_pages'>
+export type ContactInquiry = Tables<'contact_inquiries'>
+export type InquiryResponseTemplate = Tables<'inquiry_response_templates'>
+export type InquiryCommunication = Tables<'inquiry_communications'>
+export type InquiryDataProcessingLog = Tables<'inquiry_data_processing_log'>
 
 // Utility functions for common operations
 export const getUser = async () => {
