@@ -137,8 +137,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const updateData = validation.data!
 
-    // Remove id from update data
-    const { id, ...productData } = updateData
+    // Remove id from update data (id already extracted from params)
+    const { id: _, ...productData } = updateData
 
     // Check if product exists
     const { data: existingProduct, error: fetchError } = await supabase
