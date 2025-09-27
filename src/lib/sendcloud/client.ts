@@ -212,8 +212,20 @@ class SendcloudClient {
     this.isTestMode = process.env.NODE_ENV !== 'production'
 
     if (!options?.skipValidation && (!this.apiKey || !this.apiSecret)) {
-      throw new Error('SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY environment variables are required')
+      // In development, log warning instead of throwing error to prevent crashes
+      if (this.isTestMode) {
+        console.warn('WARNING: SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY environment variables are missing. Shipping calculations will use fallback options.')
+      } else {
+        throw new Error('SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY environment variables are required')
+      }
     }
+  }
+
+  /**
+   * Check if the client has valid credentials
+   */
+  hasValidCredentials(): boolean {
+    return !!(this.apiKey && this.apiSecret)
   }
 
   /**

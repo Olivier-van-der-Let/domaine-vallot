@@ -4,10 +4,14 @@ import { shippingRateSchema, validateSchema } from '@/lib/validators/schemas'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚚 Shipping options API called')
     const body = await request.json()
+    console.log('📦 Request body:', JSON.stringify(body, null, 2))
+
     const validation = validateSchema(shippingRateSchema, body)
 
     if (!validation.success) {
+      console.error('❌ Validation failed:', validation.errors)
       return NextResponse.json(
         { error: 'Invalid shipping options request', details: validation.errors },
         { status: 400 }
@@ -15,6 +19,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { destination, items, totalValue } = validation.data
+    console.log('✅ Validation passed:', { destination, itemCount: items.length, totalValue })
+
+    // Additional validation for edge cases
+    if (totalValue <= 0) {
+      console.error('❌ Invalid total value:', totalValue)
+      return NextResponse.json(
+        { error: 'Invalid order total value' },
+        { status: 400 }
+      )
+    }
+
+    if (items.length === 0) {
+      console.error('❌ No items in order')
+      return NextResponse.json(
+        { error: 'No items in order' },
+        { status: 400 }
+      )
+    }
+
+    // Validate destination country is supported
+    const supportedCountries = ['NL', 'BE', 'DE', 'FR', 'IT', 'ES', 'AT', 'PT', 'LU', 'GB', 'US', 'CA']
+    if (!supportedCountries.includes(destination.country.toUpperCase())) {
+      console.warn('⚠️ Unsupported destination country:', destination.country)
+      return NextResponse.json({
+        carriers: [],
+        destination,
+        error: 'Shipping not available to this destination',
+        message: 'We currently do not ship to this location. Please contact us for special arrangements.'
+      })
+    }
 
     // Calculate total bottles and weight
     const totalBottles = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -38,52 +72,85 @@ export async function POST(request: NextRequest) {
     }
 
     const sendcloudClient = getSendcloudClient()
-    const carriers = await sendcloudClient.getAvailableCarriers(
-      origin,
-      {
-        country: destination.country,
-        postal_code: destination.postalCode
-      },
-      packageInfo
-    )
+    console.log('🔑 Sendcloud client credentials available:', sendcloudClient.hasValidCredentials())
+
+    let carriers = []
+
+    // Check if credentials are available
+    if (!sendcloudClient.hasValidCredentials()) {
+      console.warn('⚠️ Sendcloud credentials missing, using fallback shipping options')
+      carriers = getFallbackCarriers(destination.country, totalWeight, totalValue)
+    } else {
+      try {
+        console.log('🌐 Calling Sendcloud API with:', { origin, destination: { country: destination.country, postal_code: destination.postalCode }, packageInfo })
+        carriers = await sendcloudClient.getAvailableCarriers(
+          origin,
+          {
+            country: destination.country,
+            postal_code: destination.postalCode
+          },
+          packageInfo
+        )
+        console.log('✅ Sendcloud API response received:', carriers.length, 'carriers')
+      } catch (apiError) {
+        console.error('❌ Sendcloud API error:', apiError)
+        console.warn('🔄 Falling back to mock shipping options')
+        carriers = getFallbackCarriers(destination.country, totalWeight, totalValue)
+      }
+    }
 
     // Format response with carrier options and pricing
-    const formattedCarriers = carriers.map(carrier => ({
-      code: carrier.code,
-      name: carrier.name,
-      shipping_options: carrier.shipping_options.map(option => ({
-        code: option.code,
-        name: option.product.name,
-        carrier_code: option.carrier.code,
-        carrier_name: option.carrier.name,
-        // Extract price from quotes if available, otherwise use a default estimation method
-        price: option.quotes && option.quotes.length > 0
-          ? Math.round(option.quotes[0].price.value * 100) // Convert to cents
-          : estimateShippingPrice(option, totalWeight, destination.country),
-        currency: option.quotes && option.quotes.length > 0
-          ? option.quotes[0].price.currency
-          : 'EUR',
-        price_display: option.quotes && option.quotes.length > 0
-          ? option.quotes[0].price.value.toFixed(2)
-          : (estimateShippingPrice(option, totalWeight, destination.country) / 100).toFixed(2),
-        delivery_time: option.quotes && option.quotes.length > 0
-          ? option.quotes[0].delivery_time
-          : estimateDeliveryTime(option),
-        service_point_required: option.functionalities.last_mile === 'service_point',
-        characteristics: {
-          is_tracked: option.functionalities.tracked,
-          requires_signature: option.functionalities.signature,
-          is_express: option.functionalities.delivery_deadline === 'express',
-          insurance: option.functionalities.insurance,
-          last_mile: option.functionalities.last_mile
-        },
-        weight_range: {
-          min: parseFloat(option.weight.min.value),
-          max: parseFloat(option.weight.max.value),
-          unit: option.weight.min.unit
-        }
-      }))
-    }))
+    const formattedCarriers = carriers.map(carrier => {
+      console.log('🔄 Formatting carrier:', carrier.code, 'with', carrier.shipping_options.length, 'options')
+
+      return {
+        code: carrier.code,
+        name: carrier.name,
+        shipping_options: carrier.shipping_options.map(option => {
+          console.log('🔄 Formatting option:', option.code)
+
+          // Handle both API response format and fallback format
+          const price = option.quotes && option.quotes.length > 0
+            ? Math.round(option.quotes[0].price.value * 100) // Convert to cents
+            : estimateShippingPrice(option, totalWeight, destination.country)
+
+          const currency = option.quotes && option.quotes.length > 0
+            ? option.quotes[0].price.currency
+            : 'EUR'
+
+          const deliveryTime = option.quotes && option.quotes.length > 0
+            ? option.quotes[0].delivery_time
+            : estimateDeliveryTime(option)
+
+          return {
+            code: option.code,
+            name: option.product?.name || option.name || option.code,
+            carrier_code: option.carrier?.code || carrier.code,
+            carrier_name: option.carrier?.name || carrier.name,
+            price: price,
+            currency: currency,
+            price_display: (price / 100).toFixed(2),
+            delivery_time: deliveryTime,
+            service_point_required: option.functionalities?.last_mile === 'service_point',
+            characteristics: {
+              is_tracked: option.functionalities?.tracked || false,
+              requires_signature: option.functionalities?.signature || false,
+              is_express: option.functionalities?.delivery_deadline === 'express',
+              insurance: option.functionalities?.insurance || 0,
+              last_mile: option.functionalities?.last_mile || 'home_delivery'
+            },
+            weight_range: {
+              min: parseFloat(option.weight?.min?.value || '0.1'),
+              max: parseFloat(option.weight?.max?.value || '30'),
+              unit: option.weight?.min?.unit || 'kg'
+            }
+          }
+        })
+      }
+    })
+
+    console.log('✅ Formatted response:', formattedCarriers.length, 'carriers with',
+      formattedCarriers.reduce((sum, c) => sum + c.shipping_options.length, 0), 'total options')
 
     return NextResponse.json({
       carriers: formattedCarriers,
@@ -97,12 +164,83 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Shipping options calculation error:', error)
+    console.error('💥 Shipping options calculation error:', error)
     return NextResponse.json(
-      { error: 'Shipping options calculation failed' },
+      { error: 'Shipping options calculation failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
+}
+
+/**
+ * Generate fallback carriers when Sendcloud API is unavailable
+ */
+function getFallbackCarriers(country: string, totalWeight: number, totalValue: number) {
+  const isEU = ['NL', 'BE', 'DE', 'FR', 'IT', 'ES', 'AT', 'PT', 'LU'].includes(country.toUpperCase())
+
+  const baseCarriers = [
+    {
+      code: 'postnl',
+      name: 'PostNL',
+      shipping_options: [
+        {
+          code: 'postnl-standard',
+          name: 'PostNL Standard',
+          carrier: { code: 'postnl', name: 'PostNL' },
+          product: { code: 'postnl-standard', name: 'PostNL Standard' },
+          functionalities: {
+            tracked: true,
+            signature: false,
+            insurance: totalValue > 5000 ? 500 : 0,
+            last_mile: 'home_delivery',
+            delivery_deadline: 'standard',
+            service_area: isEU ? 'domestic' : 'international'
+          },
+          weight: {
+            min: { value: '0.1', unit: 'kg' },
+            max: { value: '30', unit: 'kg' }
+          },
+          quotes: [{
+            price: { value: isEU ? 8.95 : 15.95, currency: 'EUR' },
+            delivery_time: isEU ? '2-3 business days' : '5-7 business days'
+          }]
+        }
+      ]
+    }
+  ]
+
+  if (isEU) {
+    baseCarriers.push({
+      code: 'dpd',
+      name: 'DPD',
+      shipping_options: [
+        {
+          code: 'dpd-classic',
+          name: 'DPD Classic',
+          carrier: { code: 'dpd', name: 'DPD' },
+          product: { code: 'dpd-classic', name: 'DPD Classic' },
+          functionalities: {
+            tracked: true,
+            signature: true,
+            insurance: totalValue > 5000 ? 500 : 0,
+            last_mile: 'home_delivery',
+            delivery_deadline: 'standard',
+            service_area: 'domestic'
+          },
+          weight: {
+            min: { value: '0.1', unit: 'kg' },
+            max: { value: '31.5', unit: 'kg' }
+          },
+          quotes: [{
+            price: { value: 12.50, currency: 'EUR' },
+            delivery_time: '1-2 business days'
+          }]
+        }
+      ]
+    })
+  }
+
+  return baseCarriers
 }
 
 /**
