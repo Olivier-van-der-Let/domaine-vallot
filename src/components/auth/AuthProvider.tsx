@@ -43,24 +43,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Get current session and user data
+  // Get current session and user data with improved error handling
   const getSession = async (retryCount = 0) => {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser()
+      // Get session first, then user data
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-      if (error) {
-        console.error('User fetch error:', error)
-        return false
+      if (sessionError && !sessionError.message.includes('session_not_found')) {
+        console.error('Session fetch error:', sessionError)
       }
 
-      // Get session for additional data
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
 
+      if (userError && !userError.message.includes('session_not_found')) {
+        console.error('User fetch error:', userError)
+      }
+
+      // Update states
       setSession(session)
       setUser(user)
 
-      // Get customer profile if user exists
-      if (user) {
+      // Get customer profile if user exists and session is valid
+      if (user && session) {
         await getCustomerProfile(user.id)
         await checkAdminStatus(user.id)
       } else {
@@ -68,7 +72,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsAdmin(false)
       }
 
-      return !!user
+      // Log authentication state for debugging
+      console.log('🔐 Auth state updated:', {
+        hasUser: !!user,
+        hasSession: !!session,
+        userId: user?.id?.substring(0, 8) || 'none',
+        sessionValid: session ? !session.expires_at || new Date(session.expires_at) > new Date() : false
+      })
+
+      return !!(user && session)
     } catch (error) {
       console.error('Session fetch error:', error)
       return false
@@ -315,19 +327,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     getSession()
 
-    // Listen for auth changes
+    // Listen for auth changes with improved session handling
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, !!session?.user)
+      console.log('🔄 Auth state change:', event, {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        sessionExpiry: session?.expires_at ? new Date(session.expires_at).toISOString() : null
+      })
 
       setSession(session)
 
       // Use getUser() for secure user data
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error } = await supabase.auth.getUser()
+
+      if (error && !error.message.includes('session_not_found')) {
+        console.error('Error getting user during auth state change:', error)
+      }
+
       setUser(user)
 
-      if (user) {
+      if (user && session) {
         await getCustomerProfile(user.id)
         await checkAdminStatus(user.id)
       } else {
@@ -339,15 +360,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (event === 'SIGNED_OUT') {
         setCustomer(null)
         setIsAdmin(false)
-        router.refresh()
+        // Don't immediately refresh, let the component handle redirects
+        console.log('🚪 User signed out, clearing auth state')
       }
 
       if (event === 'SIGNED_IN') {
-        // Redirect to intended page or dashboard
-        const redirectTo = new URLSearchParams(window.location.search).get('redirect')
-        if (redirectTo) {
-          router.push(redirectTo)
-        }
+        console.log('✅ User signed in successfully')
+        // Redirect to intended page or dashboard after short delay for state sync
+        setTimeout(() => {
+          const redirectTo = new URLSearchParams(window.location.search).get('redirect')
+          if (redirectTo) {
+            console.log('🔄 Redirecting to:', redirectTo)
+            router.push(redirectTo)
+          }
+        }, 100)
+      }
+
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 Token refreshed successfully')
       }
 
       if (event === 'PASSWORD_RECOVERY') {

@@ -96,18 +96,34 @@ export function useCart(): UseCartReturn {
     }
   }, 1000) // 1 second debounce
 
-  // Fetch cart data
+  // Fetch cart data with improved error handling
   const fetchCart = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
       const response = await fetch('/api/cart', {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
 
+      if (response.status === 401) {
+        // User not authenticated - this is expected behavior
+        console.log('🛒 Cart fetch: User not authenticated')
+        setItems([])
+        setSummary({
+          itemCount: 0,
+          totalQuantity: 0,
+          subtotalEur: 0
+        })
+        return
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to fetch cart')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to fetch cart')
       }
 
       const result = await response.json()
@@ -118,9 +134,16 @@ export function useCart(): UseCartReturn {
         subtotalEur: 0
       }
 
+      console.log('🛒 Cart fetched successfully:', {
+        itemCount: cartItems.length,
+        totalQuantity: cartSummary.totalQuantity,
+        subtotal: cartSummary.subtotalEur
+      })
+
       setItems(cartItems)
       setSummary(cartSummary)
     } catch (err) {
+      console.error('Cart fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load cart')
       setItems([])
       setSummary({
@@ -264,7 +287,7 @@ export function useCart(): UseCartReturn {
     }
   }, [items, summary, fetchCart])
 
-  // Add item to cart with optimistic updates
+  // Add item to cart with improved authentication handling
   const addItem = useCallback(async (productId: string, quantity: number = 1): Promise<boolean> => {
     try {
       setError(null)
@@ -291,15 +314,22 @@ export function useCart(): UseCartReturn {
         })
       })
 
+      if (response.status === 401) {
+        throw new Error('Please sign in to add items to cart')
+      }
+
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(errorData.error || 'Failed to add item to cart')
       }
+
+      console.log('🛒 Item added to cart successfully:', { productId, quantity })
 
       // Refresh cart data to get the new item with full product details
       await fetchCart()
       return true
     } catch (err) {
+      console.error('Add to cart error:', err)
       setError(err instanceof Error ? err.message : 'Failed to add item')
       return false
     } finally {

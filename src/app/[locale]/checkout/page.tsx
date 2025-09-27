@@ -148,27 +148,94 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     )
   }
 
-  // Enhanced debugging for early returns
+  // Enhanced error handling with better user feedback
   if (!user) {
     console.log('🚫 Checkout: No user, redirecting to login')
-    if (locale) {
-      router.push(`/${locale}/login?redirect=checkout`)
+    if (locale && !authLoading) {
+      setTimeout(() => {
+        router.push(`/${locale}/login?redirect=checkout`)
+      }, 1000)
     }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Redirecting to login...</p>
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {locale === 'fr' ? 'Connexion requise' : 'Sign In Required'}
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {locale === 'fr'
+              ? 'Vous devez être connecté pour procéder au checkout'
+              : 'You need to sign in to proceed with checkout'
+            }
+          </p>
+          <div className="animate-pulse text-blue-600">
+            {locale === 'fr' ? 'Redirection vers la connexion...' : 'Redirecting to sign in...'}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (cartLoading) {
+    console.log('🛒 Checkout: Cart loading...')
+    return <CheckoutSkeleton />
+  }
+
+  if (cartError) {
+    console.log('🚫 Checkout: Cart error:', cartError)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {locale === 'fr' ? 'Erreur de chargement' : 'Loading Error'}
+          </h2>
+          <p className="text-gray-600 mb-4">{cartError}</p>
+          <button
+            onClick={() => router.push(`/${locale}/cart`)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {locale === 'fr' ? 'Retour au panier' : 'Return to Cart'}
+          </button>
         </div>
       </div>
     )
   }
 
   if (!cart) {
-    console.log('🚫 Checkout: No cart data')
+    console.log('🚫 Checkout: No cart data available')
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Loading cart...</p>
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5H19M7 13v6a1 1 0 001 1h10a1 1 0 001-1v-6M7 13H5.4" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {locale === 'fr' ? 'Panier introuvable' : 'Cart Not Found'}
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {locale === 'fr'
+              ? 'Impossible de charger les données du panier'
+              : 'Unable to load cart data'
+            }
+          </p>
+          <button
+            onClick={() => router.push(`/${locale}/cart`)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {locale === 'fr' ? 'Aller au panier' : 'Go to Cart'}
+          </button>
         </div>
       </div>
     )
@@ -177,12 +244,38 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   if (cart.items.length === 0) {
     console.log('🚫 Checkout: Empty cart, redirecting')
     if (locale) {
-      router.push(`/${locale}/cart`)
+      setTimeout(() => {
+        router.push(`/${locale}/cart`)
+      }, 1000)
     }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Cart is empty, redirecting...</p>
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5H19M7 13v6a1 1 0 001 1h10a1 1 0 001-1v-6M7 13H5.4" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            {locale === 'fr' ? 'Panier vide' : 'Cart is Empty'}
+          </h2>
+          <p className="text-gray-600 mb-4">
+            {locale === 'fr'
+              ? 'Ajoutez des produits à votre panier avant de procéder au checkout'
+              : 'Add products to your cart before proceeding to checkout'
+            }
+          </p>
+          <div className="space-y-2">
+            <div className="animate-pulse text-blue-600 text-sm">
+              {locale === 'fr' ? 'Redirection vers le panier...' : 'Redirecting to cart...'}
+            </div>
+            <button
+              onClick={() => router.push(`/${locale}/products`)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              {locale === 'fr' ? 'Voir les produits' : 'Browse Products'}
+            </button>
+          </div>
         </div>
       </div>
     )
