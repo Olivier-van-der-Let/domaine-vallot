@@ -62,7 +62,10 @@
       "Bash(vercel logs:*)",
       "mcp__vercel__web_fetch_vercel_url",
       "mcp__vercel__get_access_to_vercel_url",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "mcp__vercel__get_project",
+      "mcp__playwright__browser_select_option",
+      "mcp__vercel__get_deployment"
     ],
     "deny": [],
     "ask": []

@@ -19,6 +19,23 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [locale, setLocale] = useState<string>('')
   const [selectedShippingOption, setSelectedShippingOption] = useState<any>(null)
+  const [debugInfo, setDebugInfo] = useState<any>({})
+
+  // Enhanced debugging - log state changes
+  useEffect(() => {
+    const debug = {
+      authLoading,
+      cartLoading,
+      hasUser: !!user,
+      hasCart: !!cart,
+      cartItemsCount: cart?.items?.length || 0,
+      cartError,
+      locale,
+      timestamp: new Date().toISOString()
+    }
+    setDebugInfo(debug)
+    console.log('🔍 Checkout Debug:', debug)
+  }, [authLoading, cartLoading, user, cart, cartError, locale])
 
   // Resolve async params
   useEffect(() => {
@@ -131,14 +148,60 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     )
   }
 
-  // Don't render if cart is empty or user not authenticated
-  if (!user || !cart || cart.items.length === 0) {
-    return null
+  // Enhanced debugging for early returns
+  if (!user) {
+    console.log('🚫 Checkout: No user, redirecting to login')
+    if (locale) {
+      router.push(`/${locale}/login?redirect=checkout`)
+    }
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
+
+  if (!cart) {
+    console.log('🚫 Checkout: No cart data')
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Loading cart...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (cart.items.length === 0) {
+    console.log('🚫 Checkout: Empty cart, redirecting')
+    if (locale) {
+      router.push(`/${locale}/cart`)
+    }
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Cart is empty, redirecting...</p>
+        </div>
+      </div>
+    )
+  }
+
+  console.log('✅ Checkout: Rendering successful checkout page', { user: !!user, cart: !!cart, items: cart.items.length })
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Development Debug Panel */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs">
+            <strong>🔍 Debug Info:</strong> Auth: {authLoading ? 'loading' : user ? 'authenticated' : 'not authenticated'} |
+            Cart: {cartLoading ? 'loading' : cart ? `${cart.items.length} items` : 'no cart'} |
+            Locale: {locale || 'loading'}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <nav className="flex mb-4" aria-label="Breadcrumb">

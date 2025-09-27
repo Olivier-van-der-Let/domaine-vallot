@@ -50,7 +50,7 @@ async function requireAdminAuth(supabase: any) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient<Database>({ cookies });
@@ -58,7 +58,7 @@ export async function GET(
     // Require admin authentication
     await requireAdminAuth(supabase);
 
-    const inquiryId = params.id;
+    const { id: inquiryId } = await params;
 
     // Get the inquiry with related data
     const { data: inquiry, error } = await supabase
@@ -140,7 +140,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient<Database>({ cookies });
@@ -148,7 +148,7 @@ export async function PUT(
     // Require admin authentication
     const user = await requireAdminAuth(supabase);
 
-    const inquiryId = params.id;
+    const { id: inquiryId } = await params;
     const body = await request.json();
 
     // Validate the update data
@@ -232,7 +232,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient<Database>({ cookies });
@@ -240,7 +240,7 @@ export async function DELETE(
     // Require admin authentication
     const user = await requireAdminAuth(supabase);
 
-    const inquiryId = params.id;
+    const { id: inquiryId } = await params;
     const url = new URL(request.url);
     const anonymize = url.searchParams.get('anonymize') === 'true';
 
@@ -320,7 +320,7 @@ export async function DELETE(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createServerComponentClient<Database>({ cookies });
@@ -328,7 +328,7 @@ export async function POST(
     // Require admin authentication
     const user = await requireAdminAuth(supabase);
 
-    const inquiryId = params.id;
+    const { id: inquiryId } = await params;
     const body = await request.json();
 
     // Check if this is a response action
