@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabaseClient } from '@/lib/supabase/server'
-import { sendcloudClient } from '@/lib/sendcloud/client'
+import { getSendcloudClient } from '@/lib/sendcloud/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // Verify webhook signature (if available)
     const signature = request.headers.get('x-sendcloud-signature') || ''
-    if (!sendcloudClient.verifyWebhookSignature(body, signature)) {
+    if (!getSendcloudClient().verifyWebhookSignature(body, signature)) {
       console.error('Invalid Sendcloud webhook signature')
       return NextResponse.json(
         { error: 'Invalid signature' },

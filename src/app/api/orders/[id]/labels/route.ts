@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabaseClient } from '@/lib/supabase/server'
-import { sendcloudClient } from '@/lib/sendcloud/client'
+import { getSendcloudClient } from '@/lib/sendcloud/client'
 
 export async function POST(
   request: NextRequest,
@@ -47,7 +47,7 @@ export async function POST(
     }
 
     // Create shipping label in Sendcloud
-    const labelResponse = await sendcloudClient.createLabel(
+    const labelResponse = await getSendcloudClient().createLabel(
       order.sendcloud_order_id,
       shipping_method_id
     )
@@ -154,7 +154,7 @@ export async function GET(
     let trackingInfo = null
     if (order.sendcloud_parcel_id) {
       try {
-        trackingInfo = await sendcloudClient.getTracking(order.sendcloud_parcel_id)
+        trackingInfo = await getSendcloudClient().getTracking(order.sendcloud_parcel_id)
       } catch (trackingError) {
         console.error('Failed to get tracking info:', trackingError)
         // Continue with stored data if API fails

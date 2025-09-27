@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { handlePaymentWebhook } from '@/lib/mollie/client'
 import { createRouteHandlerSupabaseClient } from '@/lib/supabase/server'
-import { sendcloudClient } from '@/lib/sendcloud/client'
+import { getSendcloudClient } from '@/lib/sendcloud/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +85,7 @@ async function createSendcloudOrder(order: any) {
     }
 
     // Create order in Sendcloud
-    const sendcloudOrder = await sendcloudClient.createOrder({
+    const sendcloudOrder = await getSendcloudClient().createOrder({
       order_id: order.id,
       order_number: order.order_number,
       customer_email: order.billing_address?.email || order.shipping_address?.email,

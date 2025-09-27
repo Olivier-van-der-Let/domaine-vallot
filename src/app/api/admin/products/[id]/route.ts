@@ -485,6 +485,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params before using
+    const { id } = await params;
+
     // Require admin authentication
     const admin = await requireAdminAuth(request)
     requirePermission(admin, 'products.delete')

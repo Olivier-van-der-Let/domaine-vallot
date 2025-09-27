@@ -3,7 +3,7 @@ import { getServerUser, createOrder, getCartItems, removeFromCart } from '@/lib/
 import { orderSchema, validateSchema } from '@/lib/validators/schemas'
 import { calculateVat } from '@/lib/vat/calculator'
 import { createWinePayment } from '@/lib/mollie/client'
-import { calculateWineShipping, sendcloudClient } from '@/lib/sendcloud/client'
+import { calculateWineShipping, getSendcloudClient } from '@/lib/sendcloud/client'
 
 export async function POST(request: NextRequest) {
   try {

@@ -160,7 +160,7 @@ class SendcloudClient {
   private integrationId: number | null
   private isTestMode: boolean
 
-  constructor() {
+  constructor(options?: { skipValidation?: boolean }) {
     this.apiKey = process.env.SENDCLOUD_PUBLIC_KEY || ''
     this.apiSecret = process.env.SENDCLOUD_SECRET_KEY || ''
     this.baseUrl = 'https://panel.sendcloud.sc/api/v2'
@@ -168,7 +168,7 @@ class SendcloudClient {
     this.integrationId = process.env.SENDCLOUD_INTEGRATION_ID ? parseInt(process.env.SENDCLOUD_INTEGRATION_ID) : null
     this.isTestMode = process.env.NODE_ENV !== 'production'
 
-    if (!this.apiKey || !this.apiSecret) {
+    if (!options?.skipValidation && (!this.apiKey || !this.apiSecret)) {
       throw new Error('SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY environment variables are required')
     }
   }
@@ -677,8 +677,15 @@ export class SendcloudError extends Error {
   }
 }
 
-// Export singleton instance
-export const sendcloudClient = new SendcloudClient()
+// Lazy instantiation to avoid build-time errors when env vars are missing
+let _sendcloudClient: SendcloudClient | null = null
+
+export const getSendcloudClient = (): SendcloudClient => {
+  if (!_sendcloudClient) {
+    _sendcloudClient = new SendcloudClient()
+  }
+  return _sendcloudClient
+}
 
 // Helper functions for wine shipping
 export const calculateWineShipping = async (
@@ -691,7 +698,7 @@ export const calculateWineShipping = async (
   const packagingWeight = Math.max(200, bottles * 50) // Base packaging + per bottle
   const totalWeight = (bottles * bottleWeight) + packagingWeight
 
-  return sendcloudClient.calculateRates(
+  return getSendcloudClient().calculateRates(
     {
       country: destination.country,
       postal_code: destination.postal_code,
@@ -738,7 +745,7 @@ export const createWineShipment = async (
     external_reference: `wine-order-${orderData.orderId}`
   }
 
-  return sendcloudClient.createShipment(parcel, shippingMethodId)
+  return getSendcloudClient().createShipment(parcel, shippingMethodId)
 }
 
 export const formatShippingPrice = (price: number, currency = 'EUR'): string => {
