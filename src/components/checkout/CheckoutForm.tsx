@@ -184,6 +184,7 @@ export default function CheckoutForm({
             city: formData.shipping.city
           },
           items: cart.items.map((item: any) => ({
+            productId: item.productId || item.id,
             quantity: item.quantity,
             weight: item.weight || 750 // Default 750g per bottle
           })),
