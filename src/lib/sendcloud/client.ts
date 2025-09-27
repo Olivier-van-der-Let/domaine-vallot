@@ -137,6 +137,49 @@ export interface SendcloudRate {
   service_point_required: boolean
 }
 
+export interface SendcloudShippingOption {
+  code: string
+  carrier: {
+    code: string
+    name: string
+  }
+  product: {
+    code: string
+    name: string
+  }
+  functionalities: {
+    b2b: boolean
+    b2c: boolean
+    tracked: boolean
+    signature: boolean
+    insurance: number
+    last_mile: string
+    first_mile: string
+    service_area: string
+    delivery_deadline: string
+    [key: string]: any
+  }
+  weight: {
+    min: { value: string; unit: string }
+    max: { value: string; unit: string }
+  }
+  billed_weight: {
+    unit: string
+    value: string
+    volumetric: boolean
+  }
+  quotes?: Array<{
+    price: { value: number; currency: string }
+    delivery_time?: string
+  }>
+}
+
+export interface CarrierOption {
+  code: string
+  name: string
+  shipping_options: SendcloudShippingOption[]
+}
+
 export interface SendcloudServicePoint {
   id: string
   name: string
@@ -230,6 +273,84 @@ class SendcloudClient {
       delivery_time: method.delivery_time,
       service_point_required: method.service_point_input === 'required'
     }))
+  }
+
+  /**
+   * Fetch shipping options using V3 API with carrier grouping
+   */
+  async fetchShippingOptions(
+    origin: Pick<SendcloudAddress, 'country' | 'postal_code'>,
+    destination: Pick<SendcloudAddress, 'country' | 'postal_code'>,
+    packageInfo: {
+      weight: number // in grams
+      value?: number // in cents
+      length?: number // in cm
+      width?: number // in cm
+      height?: number // in cm
+    }
+  ): Promise<SendcloudShippingOption[]> {
+    const payload = {
+      from_country: origin.country.toUpperCase(),
+      to_country: destination.country.toUpperCase(),
+      from_postal_code: origin.postal_code,
+      to_postal_code: destination.postal_code,
+      weight: {
+        value: (packageInfo.weight / 1000).toFixed(3), // Convert grams to kg
+        unit: 'kg'
+      },
+      ...(packageInfo.length && packageInfo.width && packageInfo.height && {
+        dimensions: {
+          length: packageInfo.length.toString(),
+          width: packageInfo.width.toString(),
+          height: packageInfo.height.toString(),
+          unit: 'cm'
+        }
+      })
+    }
+
+    const response = await this.makeRequestV3('POST', '/fetch-shipping-options', payload)
+    return response.data || []
+  }
+
+  /**
+   * Get available carriers grouped by carrier with shipping options
+   */
+  async getAvailableCarriers(
+    origin: Pick<SendcloudAddress, 'country' | 'postal_code'>,
+    destination: Pick<SendcloudAddress, 'country' | 'postal_code'>,
+    packageInfo: {
+      weight: number // in grams
+      value?: number // in cents
+      length?: number // in cm
+      width?: number // in cm
+      height?: number // in cm
+    }
+  ): Promise<CarrierOption[]> {
+    const shippingOptions = await this.fetchShippingOptions(origin, destination, packageInfo)
+
+    // Filter wine-compatible options
+    const wineCompatibleOptions = shippingOptions.filter(option =>
+      this.isWineCompatibleShippingOption(option, destination.country)
+    )
+
+    // Group by carrier
+    const carrierMap = new Map<string, CarrierOption>()
+
+    wineCompatibleOptions.forEach(option => {
+      const carrierCode = option.carrier.code
+
+      if (!carrierMap.has(carrierCode)) {
+        carrierMap.set(carrierCode, {
+          code: carrierCode,
+          name: option.carrier.name,
+          shipping_options: []
+        })
+      }
+
+      carrierMap.get(carrierCode)!.shipping_options.push(option)
+    })
+
+    return Array.from(carrierMap.values())
   }
 
   /**
@@ -410,7 +531,7 @@ class SendcloudClient {
       throw new Error('SENDCLOUD_INTEGRATION_ID environment variable is required for label creation')
     }
 
-    const payload = {
+    const payload: any = {
       integration_id: this.integrationId,
       order: {
         order_id: orderId
@@ -505,6 +626,42 @@ class SendcloudClient {
     if (restrictedCountries.includes(destinationCountry.toUpperCase())) {
       // Only allow express/registered methods for restricted countries
       return method.characteristics.is_express || method.characteristics.requires_signature
+    }
+
+    return true
+  }
+
+  /**
+   * Check if shipping option (V3 API) is compatible with wine
+   */
+  private isWineCompatibleShippingOption(
+    option: SendcloudShippingOption,
+    destinationCountry: string
+  ): boolean {
+    // Wine shipping restrictions
+
+    // Must support tracking for valuable items
+    if (!option.functionalities.tracked) {
+      return false
+    }
+
+    // Some carriers don't support alcohol shipping
+    const alcoholRestrictedCarriers = ['amazon', 'fedex_envelope']
+    if (alcoholRestrictedCarriers.includes(option.carrier.code.toLowerCase())) {
+      return false
+    }
+
+    // Country-specific restrictions
+    const restrictedCountries = ['US', 'CA', 'AU'] // Countries with strict alcohol import laws
+    if (restrictedCountries.includes(destinationCountry.toUpperCase())) {
+      // Only allow signature required methods for restricted countries
+      return option.functionalities.signature
+    }
+
+    // Must be suitable for home delivery or service point
+    const validLastMiles = ['home_delivery', 'service_point']
+    if (!validLastMiles.includes(option.functionalities.last_mile)) {
+      return false
     }
 
     return true

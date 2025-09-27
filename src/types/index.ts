@@ -335,6 +335,72 @@ export interface CheckoutFormData {
   notes?: string
 }
 
+// Carrier Selection Types
+export interface CarrierOption {
+  code: string
+  name: string
+  shipping_options: ShippingOptionDetails[]
+}
+
+export interface ShippingOptionDetails {
+  code: string
+  name: string
+  carrier_code: string
+  carrier_name: string
+  price: number // in cents
+  currency: string
+  price_display: string
+  delivery_time?: string
+  service_point_required: boolean
+  characteristics: {
+    is_tracked: boolean
+    requires_signature: boolean
+    is_express: boolean
+    insurance: number
+    last_mile: string
+  }
+  weight_range: {
+    min: number
+    max: number
+    unit: string
+  }
+}
+
+export interface CarrierSelectionResponse {
+  carriers: CarrierOption[]
+  destination: {
+    country: string
+    postalCode: string
+    city: string
+  }
+  package_info: {
+    total_bottles: number
+    estimated_weight: number
+    dimensions: {
+      length: number
+      width: number
+      height: number
+      weight: number
+      value?: number
+    }
+  }
+  origin: {
+    country: string
+    postal_code: string
+  }
+}
+
+export interface SelectedShippingOption {
+  carrier_code: string
+  carrier_name: string
+  option_code: string
+  option_name: string
+  price: number
+  currency: string
+  delivery_time?: string
+  service_point_required: boolean
+}
+
 export interface CustomerRegistrationData {
   email: string
   password: string

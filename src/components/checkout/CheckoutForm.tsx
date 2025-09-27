@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import CarrierSelector from './CarrierSelector'
+import { CarrierOption, SelectedShippingOption, CarrierSelectionResponse } from '@/types'
 
 interface CheckoutFormProps {
   cart: any
@@ -50,6 +52,10 @@ export default function CheckoutForm({
   const [shippingRates, setShippingRates] = useState<any[]>([])
   const [selectedShipping, setSelectedShipping] = useState<string>('')
   const [loadingShipping, setLoadingShipping] = useState(false)
+  // New carrier selection state
+  const [carriers, setCarriers] = useState<CarrierOption[]>([])
+  const [selectedShippingOption, setSelectedShippingOption] = useState<SelectedShippingOption | null>(null)
+  const [loadingCarriers, setLoadingCarriers] = useState(false)
 
   // Validation functions
   const validateEmail = (email: string): boolean => {
@@ -105,12 +111,12 @@ export default function CheckoutForm({
     validateField(fieldName, (formData as any)[section][field])
   }
 
-  // Calculate shipping rates when address changes
+  // Calculate shipping options when address changes
   useEffect(() => {
     if (formData.shipping.country && formData.shipping.postalCode?.length >= 4) {
-      calculateShippingRates()
+      calculateShippingOptions()
     }
-  }, [formData.shipping.country, formData.shipping.postalCode])
+  }, [formData.shipping.country, formData.shipping.postalCode, formData.shipping.city])
 
   // Pre-populate user data when user changes
   useEffect(() => {
@@ -136,18 +142,24 @@ export default function CheckoutForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          country: formData.shipping.country,
-          postalCode: formData.shipping.postalCode,
-          weight: cart.items.reduce((total: number, item: any) => total + (item.weight || 750), 0), // Default 750g per bottle
-          value: cart.total
+          destination: {
+            country: formData.shipping.country,
+            postalCode: formData.shipping.postalCode,
+            city: formData.shipping.city
+          },
+          items: cart.items.map((item: any) => ({
+            quantity: item.quantity,
+            weight: item.weight || 750 // Default 750g per bottle
+          })),
+          totalValue: cart.total
         })
       })
 
       if (response.ok) {
         const result = await response.json()
-        setShippingRates(result.data || [])
-        if (result.data?.length > 0 && !selectedShipping) {
-          setSelectedShipping(result.data[0].id)
+        setShippingRates(result.rates || [])
+        if (result.rates?.length > 0 && !selectedShipping) {
+          setSelectedShipping(result.rates[0].id)
         }
       }
     } catch (error) {
@@ -155,6 +167,63 @@ export default function CheckoutForm({
     } finally {
       setLoadingShipping(false)
     }
+  }
+
+  const calculateShippingOptions = async () => {
+    if (!cart?.total || cart.items.length === 0) return
+
+    setLoadingCarriers(true)
+    try {
+      const response = await fetch('/api/shipping/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination: {
+            country: formData.shipping.country,
+            postalCode: formData.shipping.postalCode,
+            city: formData.shipping.city
+          },
+          items: cart.items.map((item: any) => ({
+            quantity: item.quantity,
+            weight: item.weight || 750 // Default 750g per bottle
+          })),
+          totalValue: cart.total
+        })
+      })
+
+      if (response.ok) {
+        const result: CarrierSelectionResponse = await response.json()
+        setCarriers(result.carriers || [])
+
+        // Auto-select the first available option if none selected
+        if (result.carriers?.length > 0 && !selectedShippingOption) {
+          const firstCarrier = result.carriers[0]
+          if (firstCarrier.shipping_options.length > 0) {
+            const firstOption = firstCarrier.shipping_options[0]
+            handleShippingOptionSelect({
+              carrier_code: firstCarrier.code,
+              carrier_name: firstCarrier.name,
+              option_code: firstOption.code,
+              option_name: firstOption.name,
+              price: firstOption.price,
+              currency: firstOption.currency,
+              delivery_time: firstOption.delivery_time,
+              service_point_required: firstOption.service_point_required
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to calculate shipping options:', error)
+    } finally {
+      setLoadingCarriers(false)
+    }
+  }
+
+  const handleShippingOptionSelect = (option: SelectedShippingOption) => {
+    setSelectedShippingOption(option)
+    // Update legacy selectedShipping for backward compatibility
+    setSelectedShipping(option.option_code)
   }
 
   const validateForm = (): boolean => {
@@ -199,8 +268,8 @@ export default function CheckoutForm({
       return
     }
 
-    // Validate shipping method selection
-    if (!selectedShipping) {
+    // Validate shipping option selection
+    if (!selectedShippingOption) {
       setErrors(prev => ({
         ...prev,
         _shipping: locale === 'fr'
@@ -218,7 +287,8 @@ export default function CheckoutForm({
       customer: formData.customer,
       shipping_address: formData.shipping,
       billing_address: formData.billing.sameAsShipping ? formData.shipping : formData.billing,
-      shipping_method_id: selectedShipping,
+      shipping_method_id: selectedShipping, // Keep for backward compatibility
+      shipping_option: selectedShippingOption, // New detailed shipping option
       payment_method: formData.payment.method,
       locale
     }
@@ -452,59 +522,22 @@ export default function CheckoutForm({
           </div>
 
           {/* Shipping Options */}
-          {shippingRates.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                </svg>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {locale === 'fr' ? 'Options de livraison' : 'Shipping Options'}
-                </h3>
-              </div>
-              {loadingShipping ? (
-                <div className="animate-pulse space-y-3">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {shippingRates.map((rate) => (
-                    <label key={rate.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer transition-colors">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value={rate.id}
-                        checked={selectedShipping === rate.id}
-                        onChange={(e) => setSelectedShipping(e.target.value)}
-                        className="mr-3 text-blue-600"
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-gray-900">{rate.name}</span>
-                          <span className="font-semibold text-gray-900">€{rate.price?.toFixed(2) || 'Free'}</span>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">{rate.description}</p>
-                        {rate.estimatedDelivery && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            {locale === 'fr' ? 'Livraison estimée:' : 'Estimated delivery:'} {rate.estimatedDelivery}
-                          </p>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
+          <div>
+            <CarrierSelector
+              carriers={carriers}
+              selectedOption={selectedShippingOption}
+              onOptionSelect={handleShippingOptionSelect}
+              loading={loadingCarriers}
+              locale={locale}
+            />
 
-              {/* Shipping Error */}
-              {errors._shipping && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-700 text-sm">{errors._shipping}</p>
-                </div>
-              )}
-            </div>
-          )}
+            {/* Shipping Error */}
+            {errors._shipping && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-sm">{errors._shipping}</p>
+              </div>
+            )}
+          </div>
 
           {/* Payment */}
           <div>
