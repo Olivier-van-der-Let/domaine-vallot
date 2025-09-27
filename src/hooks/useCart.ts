@@ -30,6 +30,7 @@ interface UseCartReturn {
   clearCart: () => Promise<boolean>
   refreshCart: () => Promise<void>
   validateCart: () => Promise<CartValidation>
+  updateShippingCost: (shippingCost: number) => void
 
   // Computed values
   itemCount: number
@@ -56,6 +57,7 @@ export function useCart(): UseCartReturn {
     totalQuantity: 0,
     subtotalEur: 0
   })
+  const [shippingCost, setShippingCost] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
@@ -370,6 +372,11 @@ export function useCart(): UseCartReturn {
     await fetchCart()
   }, [fetchCart])
 
+  // Update shipping cost
+  const updateShippingCost = useCallback((cost: number) => {
+    setShippingCost(cost)
+  }, [])
+
   // Load cart on mount
   useEffect(() => {
     fetchCart()
@@ -380,6 +387,11 @@ export function useCart(): UseCartReturn {
   const totalQuantity = summary.totalQuantity
   const subtotal = summary.subtotalEur
   const isEmpty = items.length === 0
+
+  // Calculate VAT and total with shipping
+  const vatRate = 0.20
+  const vatAmount = Math.round((subtotal + shippingCost) * vatRate)
+  const totalWithShipping = subtotal + shippingCost + vatAmount
 
   // Cart object for checkout components
   const cart = items.length > 0 ? {
@@ -392,11 +404,11 @@ export function useCart(): UseCartReturn {
       vintage: item.product.vintage,
       weight: 750 // Default wine bottle weight in grams
     })),
-    total: subtotal,
+    total: totalWithShipping,
     subtotal: subtotal,
-    shipping_cost: 0,
-    vat_amount: 0,
-    vat_rate: 0.20,
+    shipping_cost: shippingCost,
+    vat_amount: vatAmount,
+    vat_rate: vatRate,
     discount_amount: 0
   } : null
 
@@ -415,6 +427,7 @@ export function useCart(): UseCartReturn {
     clearCart,
     refreshCart,
     validateCart,
+    updateShippingCost,
 
     // Computed values
     itemCount,

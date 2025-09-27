@@ -13,11 +13,12 @@ interface CheckoutPageProps {
 
 export default function CheckoutPage({ params }: CheckoutPageProps) {
   const { user, loading: authLoading } = useAuth()
-  const { cart, loading: cartLoading, error: cartError } = useCart()
+  const { cart, loading: cartLoading, error: cartError, updateShippingCost } = useCart()
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [locale, setLocale] = useState<string>('')
+  const [selectedShippingOption, setSelectedShippingOption] = useState<any>(null)
 
   // Resolve async params
   useEffect(() => {
@@ -187,12 +188,18 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
               onSubmit={handleOrderSubmit}
               isProcessing={isProcessing}
               locale={locale}
+              updateShippingCost={updateShippingCost}
+              onShippingOptionChange={setSelectedShippingOption}
             />
           </div>
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <OrderSummary cart={cart} />
+            <OrderSummary
+              cart={cart}
+              locale={locale}
+              selectedShippingOption={selectedShippingOption}
+            />
           </div>
         </div>
 

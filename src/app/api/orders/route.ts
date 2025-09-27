@@ -70,15 +70,28 @@ export async function POST(request: NextRequest) {
       0
     )
 
-    // Calculate shipping
-    const totalBottles = orderItems.reduce((sum, item) => sum + item.quantity, 0)
-    const shippingRates = await calculateWineShipping(
-      orderData.shippingAddress,
-      totalBottles,
-      subtotal
-    )
+    // Calculate shipping cost based on selected shipping option
+    let shippingCost = 0
 
-    const shippingCost = shippingRates.length > 0 ? shippingRates[0].price : 0
+    // Use the selected shipping option price if provided
+    if (orderData.shipping_option && orderData.shipping_option.price) {
+      shippingCost = orderData.shipping_option.price
+      console.log('📦 Using selected shipping option:', {
+        carrier: orderData.shipping_option.carrier_name,
+        option: orderData.shipping_option.option_name,
+        price: shippingCost
+      })
+    } else {
+      // Fallback to calculating shipping rates
+      console.log('⚠️ No shipping option provided, calculating shipping rates')
+      const totalBottles = orderItems.reduce((sum, item) => sum + item.quantity, 0)
+      const shippingRates = await calculateWineShipping(
+        orderData.shippingAddress,
+        totalBottles,
+        subtotal
+      )
+      shippingCost = shippingRates.length > 0 ? shippingRates[0].price : 0
+    }
 
     // Calculate VAT
     const vatCalculation = calculateVat({
@@ -89,6 +102,14 @@ export async function POST(request: NextRequest) {
     })
 
     const totalAmount = vatCalculation.total_amount
+
+    console.log('💰 Order total calculation:', {
+      subtotal,
+      shippingCost,
+      vatAmount: vatCalculation.vat_amount,
+      totalAmount,
+      providedTotal: orderData.totalAmount
+    })
 
     // Validate calculated totals match provided totals (prevent tampering)
     const toleranceInCents = 10 // Allow 10 cent tolerance for rounding

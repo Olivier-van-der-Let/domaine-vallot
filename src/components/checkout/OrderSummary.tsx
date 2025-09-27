@@ -5,9 +5,16 @@ import React from 'react'
 interface OrderSummaryProps {
   cart: any
   locale?: string
+  selectedShippingOption?: {
+    carrier_name: string
+    option_name: string
+    price: number
+    currency: string
+    delivery_time?: string
+  } | null
 }
 
-export default function OrderSummary({ cart, locale = 'en' }: OrderSummaryProps) {
+export default function OrderSummary({ cart, locale = 'en', selectedShippingOption }: OrderSummaryProps) {
   if (!cart || !cart.items || cart.items.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -82,13 +89,36 @@ export default function OrderSummary({ cart, locale = 'en' }: OrderSummaryProps)
           </span>
         </div>
 
-        {cart.shipping_cost > 0 && (
+        {(cart.shipping_cost > 0 || selectedShippingOption) && (
+          <div className="flex justify-between text-sm">
+            <div className="flex flex-col">
+              <span className="text-gray-600">
+                {locale === 'fr' ? 'Livraison' : 'Shipping'}
+              </span>
+              {selectedShippingOption && (
+                <div className="text-xs text-gray-500 mt-1">
+                  <div>{selectedShippingOption.carrier_name} - {selectedShippingOption.option_name}</div>
+                  {selectedShippingOption.delivery_time && (
+                    <div className="text-gray-400">🕒 {selectedShippingOption.delivery_time}</div>
+                  )}
+                </div>
+              )}
+            </div>
+            <span className="text-gray-900">
+              {cart.shipping_cost > 0 ? formatPrice(cart.shipping_cost) : (
+                selectedShippingOption ? formatPrice(selectedShippingOption.price / 100) : formatPrice(0)
+              )}
+            </span>
+          </div>
+        )}
+
+        {cart.shipping_cost === 0 && !selectedShippingOption && (
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">
               {locale === 'fr' ? 'Livraison' : 'Shipping'}
             </span>
-            <span className="text-gray-900">
-              {formatPrice(cart.shipping_cost)}
+            <span className="text-gray-500 italic">
+              {locale === 'fr' ? 'À calculer' : 'To be calculated'}
             </span>
           </div>
         )}

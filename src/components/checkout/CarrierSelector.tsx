@@ -61,7 +61,7 @@ export default function CarrierSelector({
   }
 
   const getCarrierIcon = (carrierCode: string): string => {
-    // Simple emoji icons for different carriers
+    // Enhanced icons for different carriers with more variety
     const icons: Record<string, string> = {
       'postnl': '📦',
       'dpd': '🚚',
@@ -70,10 +70,29 @@ export default function CarrierSelector({
       'fedex': '⚡',
       'gls': '🎯',
       'colissimo': '🇫🇷',
+      'mondial_relay': '🌍',
       'chronopost': '⏰',
-      'tnt': '🏃',
+      'tnt': '🏃‍♂️',
+      'db_schenker': '🚛',
+      'bpost': '🇧🇪'
     }
     return icons[carrierCode.toLowerCase()] || '📬'
+  }
+
+  const getCarrierLogo = (carrierCode: string): string | null => {
+    // Return carrier logo paths if available
+    const logos: Record<string, string> = {
+      'colissimo': '/images/carriers/colissimo.svg',
+      'mondial_relay': '/images/carriers/mondial-relay.svg',
+      'ups': '/images/carriers/ups.svg',
+      'dhl': '/images/carriers/dhl.svg',
+      'dpd': '/images/carriers/dpd.svg'
+    }
+    return logos[carrierCode.toLowerCase()] || null
+  }
+
+  const getLowestPrice = (carrier: CarrierOption): number => {
+    return Math.min(...carrier.shipping_options.map(option => option.price))
   }
 
   const formatDeliveryTime = (deliveryTime?: string): string => {
@@ -125,59 +144,107 @@ export default function CarrierSelector({
         {locale === 'fr' ? 'Choisissez votre transporteur' : 'Choose your carrier'}
       </h3>
 
-      {carriers.map((carrier) => (
-        <div key={carrier.code} className="border border-gray-200 rounded-lg overflow-hidden">
-          {/* Carrier Header */}
-          <button
-            type="button"
-            onClick={() => toggleCarrier(carrier.code)}
-            className="w-full p-4 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">{getCarrierIcon(carrier.code)}</span>
-              <div className="text-left">
-                <h4 className="font-medium text-gray-900">{carrier.name}</h4>
-                <p className="text-sm text-gray-500">
-                  {carrier.shipping_options.length} {
-                    locale === 'fr'
-                      ? carrier.shipping_options.length === 1 ? 'option' : 'options'
-                      : carrier.shipping_options.length === 1 ? 'option' : 'options'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {/* Show selected option price if this carrier is selected */}
-              {selectedOption && selectedOption.carrier_code === carrier.code && (
-                <span className="text-sm font-medium text-green-600">
-                  {formatPrice(selectedOption.price, selectedOption.currency)}
-                </span>
-              )}
-              <svg
-                className={`w-5 h-5 transform transition-transform ${
-                  expandedCarrier === carrier.code ? 'rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </button>
+      {carriers.map((carrier) => {
+        const lowestPrice = getLowestPrice(carrier)
+        const carrierLogo = getCarrierLogo(carrier.code)
+        const isSelected = selectedOption && selectedOption.carrier_code === carrier.code
 
-          {/* Shipping Options */}
-          {expandedCarrier === carrier.code && (
-            <div className="p-4 space-y-3 bg-white">
-              {carrier.shipping_options.map((option) => (
-                <label
-                  key={option.code}
-                  className={`block p-3 border rounded-lg cursor-pointer transition-all ${
-                    isOptionSelected(option)
-                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                  }`}
+        return (
+          <div key={carrier.code} className={`border rounded-xl overflow-hidden transition-all duration-200 ${
+            isSelected
+              ? 'border-blue-500 shadow-md ring-1 ring-blue-100'
+              : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          }`}>
+            {/* Enhanced Carrier Header */}
+            <button
+              type="button"
+              onClick={() => toggleCarrier(carrier.code)}
+              className={`w-full p-5 transition-colors flex items-center justify-between ${
+                isSelected
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
+                  : 'bg-white hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center space-x-4">
+                {/* Carrier logo or icon */}
+                <div className="flex-shrink-0">
+                  {carrierLogo ? (
+                    <img
+                      src={carrierLogo}
+                      alt={carrier.name}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        if (target.nextElementSibling) {
+                          (target.nextElementSibling as HTMLElement).style.display = 'inline'
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <span className={`text-2xl ${carrierLogo ? 'hidden' : 'inline'}`}>
+                    {getCarrierIcon(carrier.code)}
+                  </span>
+                </div>
+
+                <div className="text-left">
+                  <h4 className={`font-semibold ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                    {carrier.name}
+                  </h4>
+                  <div className="flex items-center space-x-3 mt-1">
+                    <p className="text-sm text-gray-500">
+                      {carrier.shipping_options.length} {
+                        locale === 'fr'
+                          ? carrier.shipping_options.length === 1 ? 'option' : 'options'
+                          : carrier.shipping_options.length === 1 ? 'option' : 'options'
+                      }
+                    </p>
+                    <span className="text-sm text-gray-400">•</span>
+                    <p className="text-sm font-medium text-gray-700">
+                      {locale === 'fr' ? 'À partir de' : 'From'} {formatPrice(lowestPrice, 'EUR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                {/* Show selected option price if this carrier is selected */}
+                {isSelected && selectedOption && (
+                  <div className="text-right">
+                    <span className="text-lg font-semibold text-blue-600">
+                      {formatPrice(selectedOption.price, selectedOption.currency)}
+                    </span>
+                    <p className="text-xs text-blue-500 mt-1">
+                      {locale === 'fr' ? 'Sélectionné' : 'Selected'}
+                    </p>
+                  </div>
+                )}
+
+                <svg
+                  className={`w-5 h-5 transform transition-transform duration-200 ${
+                    expandedCarrier === carrier.code ? 'rotate-180' : ''
+                  } ${isSelected ? 'text-blue-600' : 'text-gray-400'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Enhanced Shipping Options */}
+            {expandedCarrier === carrier.code && (
+              <div className="p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+                {carrier.shipping_options.map((option) => (
+                  <label
+                    key={option.code}
+                    className={`block p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
+                      isOptionSelected(option)
+                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-sm'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-white hover:shadow-sm'
+                    }`}
+                  >
                   <div className="flex items-start space-x-3">
                     <input
                       type="radio"
@@ -241,34 +308,47 @@ export default function CarrierSelector({
                       </div>
                     </div>
                   </div>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
-      {/* Selected option summary */}
+      {/* Enhanced Selected option summary */}
       {selectedOption && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-800">
-                {locale === 'fr' ? 'Option sélectionnée:' : 'Selected option:'}
-              </p>
-              <p className="text-sm text-green-700">
-                {selectedOption.carrier_name} - {selectedOption.option_name}
-              </p>
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-green-800">
+                  {locale === 'fr' ? 'Option sélectionnée' : 'Selected shipping option'}
+                </p>
+                <p className="text-sm text-green-700 font-medium">
+                  {selectedOption.carrier_name} - {selectedOption.option_name}
+                </p>
+                {selectedOption.delivery_time && (
+                  <p className="text-xs text-green-600 mt-1">
+                    🕒 {formatDeliveryTime(selectedOption.delivery_time)}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-green-800">
+              <p className="text-lg font-bold text-green-800">
                 {formatPrice(selectedOption.price, selectedOption.currency)}
               </p>
-              {selectedOption.delivery_time && (
-                <p className="text-xs text-green-600">
-                  {formatDeliveryTime(selectedOption.delivery_time)}
-                </p>
-              )}
+              <p className="text-xs text-green-600">
+                {locale === 'fr' ? 'Frais de livraison' : 'Shipping cost'}
+              </p>
             </div>
           </div>
         </div>

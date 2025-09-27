@@ -10,6 +10,8 @@ interface CheckoutFormProps {
   onSubmit: (orderData: any) => Promise<void>
   isProcessing: boolean
   locale: string
+  updateShippingCost?: (cost: number) => void
+  onShippingOptionChange?: (option: SelectedShippingOption | null) => void
 }
 
 interface FormErrors {
@@ -21,7 +23,9 @@ export default function CheckoutForm({
   user,
   onSubmit,
   isProcessing,
-  locale
+  locale,
+  updateShippingCost,
+  onShippingOptionChange
 }: CheckoutFormProps) {
   const [formData, setFormData] = useState({
     customer: {
@@ -225,6 +229,16 @@ export default function CheckoutForm({
     setSelectedShippingOption(option)
     // Update legacy selectedShipping for backward compatibility
     setSelectedShipping(option.option_code)
+
+    // Update cart shipping cost through the passed function
+    if (updateShippingCost) {
+      updateShippingCost(option.price)
+    }
+
+    // Notify parent component about the shipping option change
+    if (onShippingOptionChange) {
+      onShippingOptionChange(option)
+    }
   }
 
   const validateForm = (): boolean => {
