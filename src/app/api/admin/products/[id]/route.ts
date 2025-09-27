@@ -24,6 +24,9 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params before using
+    const { id } = await params;
+
     // Require admin authentication
     const admin = await requireAdminAuth(request)
     requirePermission(admin, 'products.read')
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(params.id)) {
+    if (!uuidRegex.test(id)) {
       return NextResponse.json(
         { error: 'Invalid product ID format' },
         { status: 400 }
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         product_images(*),
         product_certifications(*)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -100,6 +103,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params before using
+    const { id } = await params;
+
     // Require admin authentication
     const admin = await requireAdminAuth(request)
     requirePermission(admin, 'products.update')
@@ -108,7 +114,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(params.id)) {
+    if (!uuidRegex.test(id)) {
       return NextResponse.json(
         { error: 'Invalid product ID format' },
         { status: 400 }
@@ -118,7 +124,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const body = await request.json()
 
     // Validate the request body
-    const validation = validateSchema(updateWineProductSchema, { ...body, id: params.id })
+    const validation = validateSchema(updateWineProductSchema, { ...body, id: id })
     if (!validation.success) {
       return NextResponse.json(
         {
@@ -138,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { data: existingProduct, error: fetchError } = await supabase
       .from('wine_products')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError) {
@@ -188,7 +194,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         .from('wine_products')
         .select('id')
         .eq('sku', productData.sku)
-        .neq('id', params.id)
+        .neq('id', id)
         .single()
 
       if (existingSku) {
@@ -208,7 +214,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         .from('wine_products')
         .select('id')
         .eq('slug_en', productData.slug_en)
-        .neq('id', params.id)
+        .neq('id', id)
         .single()
 
       if (existingSlugEn) {
@@ -228,7 +234,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         .from('wine_products')
         .select('id')
         .eq('slug_fr', productData.slug_fr)
-        .neq('id', params.id)
+        .neq('id', id)
         .single()
 
       if (existingSlugFr) {
@@ -253,7 +259,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { data: updatedProduct, error: updateError } = await supabase
       .from('wine_products')
       .update(sanitizedData as WineProduct)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -271,7 +277,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       const { error: deleteImagesError } = await supabase
         .from('product_images')
         .delete()
-        .eq('product_id', params.id)
+        .eq('product_id', id)
 
       if (deleteImagesError) {
         console.error('Error deleting existing images:', deleteImagesError)
@@ -288,7 +294,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
           if (processedUrl) {
             imageInserts.push({
-              product_id: params.id,
+              product_id: id,
               url: processedUrl,
               alt_text_en: image.alt_text_en || updatedProduct.name,
               alt_text_fr: image.alt_text_fr || updatedProduct.name,
@@ -323,7 +329,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         *,
         product_images(*)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchCompleteError) {
@@ -371,6 +377,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params before using
+    const { id } = await params;
+
     // Require admin authentication
     const admin = await requireAdminAuth(request)
     requirePermission(admin, 'products.update')
@@ -379,7 +388,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(params.id)) {
+    if (!uuidRegex.test(id)) {
       return NextResponse.json(
         { error: 'Invalid product ID format' },
         { status: 400 }
@@ -392,7 +401,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { data: existingProduct, error: fetchError } = await supabase
       .from('wine_products')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError) {
@@ -428,7 +437,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { data: updatedProduct, error: updateError } = await supabase
       .from('wine_products')
       .update(updateData as WineProduct)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -484,7 +493,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(params.id)) {
+    if (!uuidRegex.test(id)) {
       return NextResponse.json(
         { error: 'Invalid product ID format' },
         { status: 400 }
@@ -495,7 +504,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { data: existingProduct, error: fetchError } = await supabase
       .from('wine_products')
       .select('id, name, sku, is_active')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError) {
@@ -517,7 +526,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { data: pendingOrders, error: ordersError } = await supabase
       .from('order_items')
       .select('id')
-      .eq('product_id', params.id)
+      .eq('product_id', id)
       .in('orders.status', ['pending', 'confirmed', 'processing'])
       .limit(1)
 
@@ -540,7 +549,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { data: cartItems, error: cartError } = await supabase
       .from('cart_items')
       .select('id')
-      .eq('product_id', params.id)
+      .eq('product_id', id)
       .limit(1)
 
     if (cartError) {
@@ -552,7 +561,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       const { error: removeCartError } = await supabase
         .from('cart_items')
         .delete()
-        .eq('product_id', params.id)
+        .eq('product_id', id)
 
       if (removeCartError) {
         console.error('Error removing product from carts:', removeCartError)
@@ -571,7 +580,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         updated_by: admin.id,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select('id, name, sku')
       .single()
 

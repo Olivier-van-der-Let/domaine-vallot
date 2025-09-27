@@ -42,8 +42,8 @@ interface Product {
   sku: string;
   vintage: number;
   producer: string;
-  wine_type: string;
-  price_euros: number;
+  varietal: string;
+  price_eur: number;
   stock_quantity: number;
   low_stock_threshold?: number;
   is_active: boolean;
@@ -93,7 +93,7 @@ interface ApiResponse {
 }
 
 type ViewMode = 'table' | 'cards' | 'inventory';
-type SortField = 'name' | 'sku' | 'vintage' | 'price_euros' | 'stock_quantity' | 'created_at';
+type SortField = 'name' | 'sku' | 'vintage' | 'price_eur' | 'stock_quantity' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 type StockFilter = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -132,6 +132,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function AdminProductsPage() {
   const router = useRouter();
+  const params = useParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
@@ -250,11 +251,11 @@ export default function AdminProductsPage() {
   };
 
   const handleCreateProduct = () => {
-    router.push(`/${useParams().locale}/admin/products/new`);
+    router.push(`/${params.locale}/admin/products/new`);
   };
 
   const handleEditProduct = (productId: string) => {
-    router.push(`/${useParams().locale}/admin/products/${productId}/edit`);
+    router.push(`/${params.locale}/admin/products/${productId}/edit`);
   };
 
   const handleViewProduct = (productId: string) => {
@@ -464,8 +465,7 @@ export default function AdminProductsPage() {
         `"${product.producer.replace(/"/g, '""')}"`,
         `"${product.varietal.replace(/"/g, '""')}"`,
         `"${product.region.replace(/"/g, '""')}"`,
-        `"${product.wine_type}"`,
-        product.price_euros.toFixed(2),
+        product.price_eur.toFixed(2),
         product.stock_quantity,
         product.low_stock_threshold || 5,
         product.is_active ? 'Active' : 'Inactive',
@@ -902,12 +902,12 @@ export default function AdminProductsPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button
-                      onClick={() => handleSort('price_euros')}
+                      onClick={() => handleSort('price_eur')}
                       className="flex items-center gap-1 hover:text-gray-700"
                     >
                       Price
-                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'price_euros' ? 'text-wine-600' : ''}`} />
-                      {sortField === 'price_euros' && (
+                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'price_eur' ? 'text-wine-600' : ''}`} />
+                      {sortField === 'price_eur' && (
                         <span className="text-wine-600">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
@@ -1008,7 +1008,7 @@ export default function AdminProductsPage() {
                         <div className="flex items-center">
                           <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
                           <span className="text-sm text-gray-900">
-                            €{product.price_euros.toFixed(2)}
+                            €{product.price_eur.toFixed(2)}
                           </span>
                         </div>
                       </td>
@@ -1299,7 +1299,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center">
                         <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
                         <span className="text-lg font-semibold text-wine-600">
-                          €{product.price_euros.toFixed(2)}
+                          €{product.price_eur.toFixed(2)}
                         </span>
                       </div>
                       <div className="text-right">

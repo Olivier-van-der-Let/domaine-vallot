@@ -11,65 +11,55 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[locale]/layout.js"
     ],
-    "/[locale]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[locale]/page.js"
-    ],
     "/[locale]/admin/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[locale]/admin/layout.js"
-    ],
-    "/[locale]/admin/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[locale]/admin/page.js"
     ],
     "/[locale]/admin/products/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[locale]/admin/products/page.js"
     ],
-    "/[locale]/admin/orders/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[locale]/admin/orders/page.js"
-    ],
     "/api/admin/products/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/admin/products/route.js"
     ],
-    "/api/orders/route": [
+    "/api/admin/products/[id]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/orders/route.js"
+      "static/chunks/app/api/admin/products/[id]/route.js"
+    ],
+    "/[locale]/admin/products/new/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/admin/products/new/page.js"
+    ],
+    "/[locale]/products/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/products/[slug]/page.js"
     ],
     "/api/cart/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/cart/route.js"
     ],
-    "/api/webhooks/mollie/route": [
+    "/[locale]/admin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/webhooks/mollie/route.js"
+      "static/chunks/app/[locale]/admin/page.js"
     ],
-    "/api/products/route": [
+    "/[locale]/admin/products/[id]/edit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/products/route.js"
+      "static/chunks/app/[locale]/admin/products/[id]/edit/page.js"
     ],
-    "/api/vat/calculate/route": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/vat/calculate/route.js"
-    ],
-    "/api/age-verification/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/age-verification/route.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

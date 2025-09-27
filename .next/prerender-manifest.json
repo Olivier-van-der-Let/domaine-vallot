@@ -1,11 +1,1 @@
-{
-  "version": 4,
-  "routes": {},
-  "dynamicRoutes": {},
-  "notFoundRoutes": [],
-  "preview": {
-    "previewModeId": "806941b5c61f51fdca354727852355ac",
-    "previewModeSigningKey": "feb45e80378b8633947a1daeb0a0df06f363d7e740dd1bf83ca71d241c4b98ff",
-    "previewModeEncryptionKey": "0757c23996925197a6cdbe33e1fa40034e7b4deccbc4740e4b009a1692913701"
-  }
-}
+{"version":4,"routes":{"/en/admin/products":{},"/fr/admin/products":{},"/en/admin/products/new":{},"/fr/admin/products/new":{},"/en/admin":{},"/fr/admin":{}},"dynamicRoutes":{"/[locale]/admin/products":{"dataRoute":null,"dataRouteRegex":null,"fallback":null,"fallbackRevalidate":false,"fallbackSourceRoute":"/[locale]/admin/products","routeRegex":"^\\/([^/]+?)\\/admin\\/products(?:\\/)?$","allowHeader":[]},"/[locale]/admin/products/new":{"dataRoute":null,"dataRouteRegex":null,"fallback":null,"fallbackRevalidate":false,"fallbackSourceRoute":"/[locale]/admin/products/new","routeRegex":"^\\/([^/]+?)\\/admin\\/products\\/new(?:\\/)?$","allowHeader":[]},"/[locale]/admin":{"dataRoute":null,"dataRouteRegex":null,"fallback":null,"fallbackRevalidate":false,"fallbackSourceRoute":"/[locale]/admin","routeRegex":"^\\/([^/]+?)\\/admin(?:\\/)?$","allowHeader":[]}},"notFoundRoutes":[],"preview":{"previewModeId":"724c7b6d20a83fd8df3938e08b60aceb","previewModeSigningKey":"48ef4f8147a3dd076b0917fff490967069cf3266835ec03f8798acde75956a25","previewModeEncryptionKey":"854b926f0b5488185c8237b7e90f192edb0d8e8963ce3767870c50f3f716d51d"}}

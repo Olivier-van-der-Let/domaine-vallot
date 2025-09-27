@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest) {
 
     // Validate allowed fields for bulk update
     const allowedFields = [
-      'is_active', 'featured', 'stock_quantity', 'price_euros',
+      'is_active', 'featured', 'stock_quantity', 'price_eur',
       'low_stock_threshold', 'updated_by', 'updated_at'
     ]
     const invalidFields = Object.keys(updateData).filter(field => !allowedFields.includes(field))
@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
       .from('wine_products')
       .update(updateData as WineProduct)
       .in('id', body.productIds)
-      .select('id, name, sku, is_active, featured, stock_quantity, price_euros, updated_at')
+      .select('id, name, sku, is_active, featured, stock_quantity, price_eur, updated_at')
 
     if (updateError) {
       console.error('Error bulk updating products:', updateError)

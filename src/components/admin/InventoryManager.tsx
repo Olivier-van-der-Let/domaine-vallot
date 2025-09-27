@@ -24,11 +24,11 @@ export interface InventoryItem {
   name: string;
   vintage: number;
   producer: string;
-  wine_type: string;
+  varietal: string;
   stock_quantity: number;
   reserved_quantity: number;
   available_quantity: number;
-  price_euros: number;
+  price_eur: number;
   last_updated: string;
   low_stock_threshold: number;
   reorder_point: number;
@@ -128,7 +128,7 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
         wine_type,
         stock_quantity,
         reserved_quantity,
-        price_euros,
+        price_eur,
         updated_at,
         low_stock_threshold,
         reorder_point,
@@ -148,7 +148,7 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
       available_quantity: item.stock_quantity - (item.reserved_quantity || 0),
       last_updated: item.updated_at,
       profit_margin: item.cost_price
-        ? ((item.price_euros - item.cost_price) / item.cost_price) * 100
+        ? ((item.price_eur - item.cost_price) / item.cost_price) * 100
         : undefined,
     }));
 
@@ -158,7 +158,7 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
   const loadStats = async () => {
     const { data, error } = await supabase
       .from('wine_products')
-      .select('stock_quantity, reserved_quantity, price_euros, cost_price, low_stock_threshold')
+      .select('stock_quantity, reserved_quantity, price_eur, cost_price, low_stock_threshold')
       .eq('is_active', true);
 
     if (error) {
@@ -169,7 +169,7 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
     const stats: InventoryStats = {
       total_products: data.length,
       total_stock_value: data.reduce((sum, item) =>
-        sum + (item.stock_quantity * (item.cost_price || item.price_euros)), 0
+        sum + (item.stock_quantity * (item.cost_price || item.price_eur)), 0
       ),
       low_stock_items: data.filter(item =>
         item.stock_quantity <= (item.low_stock_threshold || 5)
@@ -276,8 +276,8 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
         item.stock_quantity,
         item.reserved_quantity || 0,
         item.available_quantity,
-        item.price_euros.toFixed(2),
-        (item.stock_quantity * item.price_euros).toFixed(2),
+        item.price_eur.toFixed(2),
+        (item.stock_quantity * item.price_eur).toFixed(2),
       ].join(','))
     ].join('\n');
 
@@ -307,7 +307,7 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
         case 'reserved':
           return (item.reserved_quantity || 0) > 0;
         case 'high_value':
-          return (item.stock_quantity * item.price_euros) > 1000;
+          return (item.stock_quantity * item.price_eur) > 1000;
         default:
           return true;
       }
@@ -528,10 +528,10 @@ export default function InventoryManager({ onProductEdit, onProductView }: Inven
                       {item.available_quantity}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.price_euros.toFixed(2)} €
+                      {item.price_eur.toFixed(2)} €
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {(item.stock_quantity * item.price_euros).toFixed(2)} €
+                      {(item.stock_quantity * item.price_eur).toFixed(2)} €
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${status.color}`}>

@@ -236,6 +236,7 @@ export default function ProductForm({
   const [preview, setPreview] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(new Set(['basic']));
   const [validationErrors, setValidationErrors] = useState<z.ZodIssue[]>([]);
+  const [allergenInputValue, setAllergenInputValue] = useState('');
 
   const supabase = createClient();
 
@@ -413,9 +414,7 @@ export default function ProductForm({
     });
   };
 
-  const renderAllergenField = () => {
-    const [inputValue, setInputValue] = useState('');
-
+  const renderAllergenField = (inputValue: string, setInputValue: (value: string) => void) => {
     return (
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Allergens</label>
@@ -1094,7 +1093,7 @@ export default function ProductForm({
                     </div>
 
                     <div>
-                      {renderAllergenField()}
+                      {renderAllergenField(allergenInputValue, setAllergenInputValue)}
                     </div>
                   </div>
                 )}
