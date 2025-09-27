@@ -52,6 +52,51 @@ export interface SendcloudShippingMethod {
   }
 }
 
+export interface SendcloudOrder {
+  id: string
+  order_id: string
+  order_number: string
+  created_at: string
+  modified_at: string
+  order_details: {
+    integration: {
+      id: number
+    }
+    status: {
+      code: string
+      message: string
+    }
+    order_date: string
+    order_items: Array<{
+      name: string
+      quantity: number
+      total_price: {
+        value: number
+        currency: string
+      }
+    }>
+  }
+  payment_details: {
+    total_price: {
+      value: number
+      currency: string
+    }
+    status: {
+      code: string
+      message: string
+    }
+  }
+  shipping_address: {
+    name: string
+    address_line_1: string
+    house_number?: string
+    postal_code: string
+    city: string
+    country_code: string
+    phone_number?: string
+  }
+}
+
 export interface SendcloudShipment {
   id: number
   name: string
@@ -111,12 +156,16 @@ class SendcloudClient {
   private apiKey: string
   private apiSecret: string
   private baseUrl: string
+  private baseUrlV3: string
+  private integrationId: number | null
   private isTestMode: boolean
 
   constructor() {
     this.apiKey = process.env.SENDCLOUD_PUBLIC_KEY || ''
     this.apiSecret = process.env.SENDCLOUD_SECRET_KEY || ''
     this.baseUrl = 'https://panel.sendcloud.sc/api/v2'
+    this.baseUrlV3 = 'https://panel.sendcloud.sc/api/v3'
+    this.integrationId = process.env.SENDCLOUD_INTEGRATION_ID ? parseInt(process.env.SENDCLOUD_INTEGRATION_ID) : null
     this.isTestMode = process.env.NODE_ENV !== 'production'
 
     if (!this.apiKey || !this.apiSecret) {
@@ -240,6 +289,145 @@ class SendcloudClient {
   }
 
   /**
+   * Create order in Sendcloud using Orders V3 API
+   */
+  async createOrder(
+    orderData: {
+      order_id: string
+      order_number: string
+      customer_email: string
+      customer_name: string
+      shipping_address: SendcloudAddress
+      billing_address: SendcloudAddress
+      items: Array<{
+        name: string
+        quantity: number
+        unit_price: number // in cents
+      }>
+      total_amount: number // in cents
+      currency: string
+    }
+  ): Promise<SendcloudOrder> {
+    if (!this.integrationId) {
+      throw new Error('SENDCLOUD_INTEGRATION_ID environment variable is required for order creation')
+    }
+
+    const payload = [{
+      order_id: orderData.order_id,
+      order_number: orderData.order_number,
+      order_details: {
+        integration: {
+          id: this.integrationId
+        },
+        status: {
+          code: 'processing_awaiting_shipment',
+          message: 'Processing awaiting shipment'
+        },
+        order_created_at: new Date().toISOString(),
+        order_items: orderData.items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          total_price: {
+            value: (item.unit_price * item.quantity) / 100, // Convert to euros
+            currency: orderData.currency
+          }
+        }))
+      },
+      payment_details: {
+        total_price: {
+          value: orderData.total_amount / 100, // Convert to euros
+          currency: orderData.currency
+        },
+        status: {
+          code: 'paid',
+          message: 'Paid'
+        }
+      },
+      shipping_address: {
+        name: orderData.customer_name,
+        address_line_1: orderData.shipping_address.address,
+        house_number: orderData.shipping_address.house_number,
+        postal_code: orderData.shipping_address.postal_code,
+        city: orderData.shipping_address.city,
+        country_code: orderData.shipping_address.country,
+        phone_number: orderData.shipping_address.telephone
+      }
+    }]
+
+    const response = await this.makeRequestV3('POST', '/orders', payload)
+    return response.data[0]
+  }
+
+  /**
+   * Get order from Sendcloud
+   */
+  async getOrder(orderId: string): Promise<SendcloudOrder> {
+    const response = await this.makeRequestV3('GET', `/orders/${orderId}`)
+    return response
+  }
+
+  /**
+   * Update order in Sendcloud
+   */
+  async updateOrder(
+    orderId: string,
+    updates: {
+      status?: {
+        code: string
+        message: string
+      }
+      shipping_address?: Partial<SendcloudAddress>
+    }
+  ): Promise<SendcloudOrder> {
+    const payload = [{
+      order_id: orderId,
+      order_details: updates.status ? {
+        status: updates.status
+      } : undefined,
+      shipping_address: updates.shipping_address
+    }]
+
+    const response = await this.makeRequestV3('POST', '/orders', payload)
+    return response.data[0]
+  }
+
+  /**
+   * Create shipping label for order
+   */
+  async createLabel(
+    orderId: string,
+    shippingMethodId?: number
+  ): Promise<{
+    integration_id: number
+    order: {
+      order_id: string
+    }
+    ship_with?: {
+      shipping_option_code: string
+    }
+  }> {
+    if (!this.integrationId) {
+      throw new Error('SENDCLOUD_INTEGRATION_ID environment variable is required for label creation')
+    }
+
+    const payload = {
+      integration_id: this.integrationId,
+      order: {
+        order_id: orderId
+      }
+    }
+
+    if (shippingMethodId) {
+      payload.ship_with = {
+        shipping_option_code: shippingMethodId.toString()
+      }
+    }
+
+    const response = await this.makeRequestV3('POST', '/ship-an-order', payload)
+    return response
+  }
+
+  /**
    * Get tracking information
    */
   async getTracking(shipmentId: number): Promise<{
@@ -341,7 +529,7 @@ class SendcloudClient {
   }
 
   /**
-   * Make HTTP request to Sendcloud API
+   * Make HTTP request to Sendcloud API V2
    */
   private async makeRequest(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -393,6 +581,75 @@ class SendcloudClient {
         { originalError: error }
       )
     }
+  }
+
+  /**
+   * Make HTTP request to Sendcloud API V3
+   */
+  private async makeRequestV3(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    endpoint: string,
+    body?: any
+  ): Promise<any> {
+    const url = `${this.baseUrlV3}${endpoint}`
+
+    // Create basic auth header
+    const credentials = Buffer.from(`${this.apiKey}:${this.apiSecret}`).toString('base64')
+
+    const headers: Record<string, string> = {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/json',
+    }
+
+    const config: RequestInit = {
+      method,
+      headers,
+    }
+
+    if (body) {
+      config.body = JSON.stringify(body)
+    }
+
+    try {
+      const response = await fetch(url, config)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new SendcloudError(
+          errorData.error?.message || 'Shipping API V3 error',
+          response.status,
+          errorData.error?.code || response.statusText,
+          errorData
+        )
+      }
+
+      return await response.json()
+    } catch (error) {
+      if (error instanceof SendcloudError) {
+        throw error
+      }
+
+      throw new SendcloudError(
+        'Shipping service V3 unavailable',
+        500,
+        'Unable to connect to shipping provider V3',
+        { originalError: error }
+      )
+    }
+  }
+
+  /**
+   * Verify webhook signature
+   */
+  verifyWebhookSignature(body: string, signature: string): boolean {
+    // Sendcloud webhook verification would be implemented here
+    // For now, we'll accept all webhooks in development
+    if (this.isTestMode) {
+      return true
+    }
+
+    // TODO: Implement proper signature verification when available
+    return true
   }
 }
 

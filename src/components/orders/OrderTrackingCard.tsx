@@ -119,8 +119,56 @@ export default function OrderTrackingCard({
           </div>
         </div>
 
-        {/* Tracking Information */}
-        {order.tracking_number && (
+        {/* Sendcloud Tracking Information */}
+        {order.sendcloud?.tracking_number && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              </svg>
+              <span className="text-sm font-medium text-blue-900">
+                {locale === 'fr' ? 'Suivi du colis' : 'Package Tracking'}
+              </span>
+              {order.sendcloud.carrier && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 uppercase">
+                  {order.sendcloud.carrier}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm text-blue-800">
+                <strong>{locale === 'fr' ? 'Numéro de suivi:' : 'Tracking Number:'}</strong>{' '}
+                <span className="font-mono">{order.sendcloud.tracking_number}</span>
+              </p>
+
+              {order.sendcloud.status_message && (
+                <p className="text-sm text-blue-700">
+                  <strong>{locale === 'fr' ? 'Statut:' : 'Status:'}</strong> {order.sendcloud.status_message}
+                </p>
+              )}
+
+              {order.sendcloud.tracking_url && (
+                <div className="pt-2">
+                  <a
+                    href={order.sendcloud.tracking_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    {locale === 'fr' ? 'Suivre le colis' : 'Track Package'}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback to basic tracking if no Sendcloud data */}
+        {!order.sendcloud?.tracking_number && order.tracking_number && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,6 +186,76 @@ export default function OrderTrackingCard({
                 <strong>{locale === 'fr' ? 'Livraison estimée:' : 'Estimated Delivery:'}</strong> {new Date(order.estimated_delivery).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Shipping Timeline */}
+        {order.shipping && (order.shipping.shipped_at || order.shipping.delivered_at) && (
+          <div className="mb-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">
+              {locale === 'fr' ? 'Chronologie de livraison' : 'Shipping Timeline'}
+            </h4>
+            <div className="relative pl-6">
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+              {/* Order Placed */}
+              <div className="relative mb-4">
+                <div className="absolute left-0 w-2 h-2 bg-green-500 rounded-full transform -translate-x-3/4"></div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-900">
+                    {locale === 'fr' ? 'Commande passée' : 'Order Placed'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(order.created_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Shipped */}
+              {order.shipping.shipped_at && (
+                <div className="relative mb-4">
+                  <div className="absolute left-0 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-3/4"></div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-900">
+                      {locale === 'fr' ? 'Expédié' : 'Shipped'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(order.shipping.shipped_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Delivered */}
+              {order.shipping.delivered_at && (
+                <div className="relative">
+                  <div className="absolute left-0 w-2 h-2 bg-green-500 rounded-full transform -translate-x-3/4"></div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-900">
+                      {locale === 'fr' ? 'Livré' : 'Delivered'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(order.shipping.delivered_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

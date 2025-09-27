@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from 'react'
 
 interface CheckoutFormProps {
-  onSubmit: (data: any) => Promise<void>
-  loading?: boolean
-  cart?: any
-  locale?: string
-  cartSummary?: any
-  vatCalculation?: any
+  cart: any
+  user: any
+  onSubmit: (orderData: any) => Promise<void>
+  isProcessing: boolean
+  locale: string
 }
 
 interface FormErrors {
@@ -16,19 +15,18 @@ interface FormErrors {
 }
 
 export default function CheckoutForm({
-  onSubmit,
-  loading = false,
   cart,
-  locale = 'en',
-  cartSummary,
-  vatCalculation
+  user,
+  onSubmit,
+  isProcessing,
+  locale
 }: CheckoutFormProps) {
   const [formData, setFormData] = useState({
     customer: {
-      email: '',
-      firstName: '',
-      lastName: '',
-      phone: ''
+      email: user?.email || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      phone: user?.phone || ''
     },
     shipping: {
       address: '',
@@ -114,8 +112,23 @@ export default function CheckoutForm({
     }
   }, [formData.shipping.country, formData.shipping.postalCode])
 
+  // Pre-populate user data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        customer: {
+          email: user.email || prev.customer.email,
+          firstName: user.firstName || prev.customer.firstName,
+          lastName: user.lastName || prev.customer.lastName,
+          phone: user.phone || prev.customer.phone
+        }
+      }))
+    }
+  }, [user])
+
   const calculateShippingRates = async () => {
-    if (!cartSummary?.subtotalEur) return
+    if (!cart?.total || cart.items.length === 0) return
 
     setLoadingShipping(true)
     try {
@@ -125,8 +138,8 @@ export default function CheckoutForm({
         body: JSON.stringify({
           country: formData.shipping.country,
           postalCode: formData.shipping.postalCode,
-          weight: cartSummary.estimatedWeight || 3000, // Default weight
-          value: cartSummary.subtotalEur
+          weight: cart.items.reduce((total: number, item: any) => total + (item.weight || 750), 0), // Default 750g per bottle
+          value: cart.total
         })
       })
 
@@ -175,16 +188,51 @@ export default function CheckoutForm({
       ]
       const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {})
       setTouched(newTouched)
+
+      // Show error message
+      setErrors(prev => ({
+        ...prev,
+        _general: locale === 'fr'
+          ? 'Veuillez corriger les erreurs ci-dessus avant de continuer'
+          : 'Please fix the errors above before continuing'
+      }))
       return
     }
 
+    // Validate shipping method selection
+    if (!selectedShipping) {
+      setErrors(prev => ({
+        ...prev,
+        _shipping: locale === 'fr'
+          ? 'Veuillez sélectionner une méthode de livraison'
+          : 'Please select a shipping method'
+      }))
+      return
+    }
+
+    // Clear previous errors
+    setErrors({})
+
     const submissionData = {
-      ...formData,
-      selectedShipping,
+      cart,
+      customer: formData.customer,
+      shipping_address: formData.shipping,
+      billing_address: formData.billing.sameAsShipping ? formData.shipping : formData.billing,
+      shipping_method_id: selectedShipping,
+      payment_method: formData.payment.method,
       locale
     }
 
-    await onSubmit(submissionData)
+    try {
+      await onSubmit(submissionData)
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        _general: error instanceof Error
+          ? error.message
+          : (locale === 'fr' ? 'Une erreur est survenue' : 'An error occurred')
+      }))
+    }
   }
 
   return (
@@ -209,6 +257,18 @@ export default function CheckoutForm({
           </div>
         </div>
       </div>
+
+      {/* General Error Message */}
+      {errors._general && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <p className="text-red-700 text-sm font-medium">{errors._general}</p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
 
@@ -436,6 +496,13 @@ export default function CheckoutForm({
                   ))}
                 </div>
               )}
+
+              {/* Shipping Error */}
+              {errors._shipping && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{errors._shipping}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -519,11 +586,11 @@ export default function CheckoutForm({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isProcessing}
               className="flex-2 bg-gray-900 text-white px-8 py-4 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
               data-testid="proceed-to-payment-button"
             >
-              {loading ? (
+              {isProcessing ? (
                 <>
                   <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                   <span>{locale === 'fr' ? 'Traitement...' : 'Processing...'}</span>

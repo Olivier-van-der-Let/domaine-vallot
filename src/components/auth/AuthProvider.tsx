@@ -46,26 +46,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Get current session and user data
   const getSession = async (retryCount = 0) => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { user }, error } = await supabase.auth.getUser()
 
       if (error) {
-        console.error('Session error:', error)
+        console.error('User fetch error:', error)
         return false
       }
 
+      // Get session for additional data
+      const { data: { session } } = await supabase.auth.getSession()
+
       setSession(session)
-      setUser(session?.user ?? null)
+      setUser(user)
 
       // Get customer profile if user exists
-      if (session?.user) {
-        await getCustomerProfile(session.user.id)
-        await checkAdminStatus(session.user.id)
+      if (user) {
+        await getCustomerProfile(user.id)
+        await checkAdminStatus(user.id)
       } else {
         setCustomer(null)
         setIsAdmin(false)
       }
 
-      return !!session
+      return !!user
     } catch (error) {
       console.error('Session fetch error:', error)
       return false
@@ -319,11 +322,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Auth state change:', event, !!session?.user)
 
       setSession(session)
-      setUser(session?.user ?? null)
 
-      if (session?.user) {
-        await getCustomerProfile(session.user.id)
-        await checkAdminStatus(session.user.id)
+      // Use getUser() for secure user data
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+
+      if (user) {
+        await getCustomerProfile(user.id)
+        await checkAdminStatus(user.id)
       } else {
         setCustomer(null)
         setIsAdmin(false)

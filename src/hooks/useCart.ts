@@ -36,6 +36,17 @@ interface UseCartReturn {
   totalQuantity: number
   subtotal: number
   isEmpty: boolean
+
+  // Cart object for checkout components
+  cart: {
+    items: CartItemWithProduct[]
+    total: number
+    subtotal: number
+    shipping_cost: number
+    vat_amount: number
+    vat_rate: number
+    discount_amount: number
+  } | null
 }
 
 export function useCart(): UseCartReturn {
@@ -370,6 +381,25 @@ export function useCart(): UseCartReturn {
   const subtotal = summary.subtotalEur
   const isEmpty = items.length === 0
 
+  // Cart object for checkout components
+  const cart = items.length > 0 ? {
+    items: items.map(item => ({
+      id: item.id,
+      name: item.product.name,
+      price: item.product.priceEur || 0,
+      quantity: item.quantity,
+      image_url: item.product.image_url,
+      vintage: item.product.vintage,
+      weight: 750 // Default wine bottle weight in grams
+    })),
+    total: subtotal,
+    subtotal: subtotal,
+    shipping_cost: 0,
+    vat_amount: 0,
+    vat_rate: 0.20,
+    discount_amount: 0
+  } : null
+
   return {
     // State
     items,
@@ -390,7 +420,10 @@ export function useCart(): UseCartReturn {
     itemCount,
     totalQuantity,
     subtotal,
-    isEmpty
+    isEmpty,
+
+    // Cart object for checkout
+    cart
   }
 }
 

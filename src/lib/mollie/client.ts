@@ -365,7 +365,7 @@ export const createWinePayment = async (orderData: {
     description: orderData.description || `Wine order ${orderData.orderId}`,
     customerEmail: orderData.customerEmail,
     customerName: orderData.customerName,
-    redirectUrl: `${baseUrl}/orders/${orderData.orderId}?payment=success`,
+    redirectUrl: `${baseUrl}/${orderData.locale?.startsWith('fr') ? 'fr' : 'en'}/payment/success?order_id=${orderData.orderId}`,
     webhookUrl: `${baseUrl}/api/webhooks/mollie`,
     locale: orderData.locale || 'en_US',
     method: mollieClient.getWineCompatibleMethods(),

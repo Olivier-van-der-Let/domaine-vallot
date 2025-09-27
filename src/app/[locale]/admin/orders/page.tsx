@@ -63,6 +63,16 @@ interface Order {
   notes?: string;
   created_at: string;
   updated_at: string;
+  // Sendcloud fields
+  sendcloud_order_id?: string;
+  sendcloud_parcel_id?: number;
+  sendcloud_tracking_number?: string;
+  sendcloud_tracking_url?: string;
+  sendcloud_label_url?: string;
+  sendcloud_status?: string;
+  sendcloud_carrier?: string;
+  shipped_at?: string;
+  delivered_at?: string;
 }
 
 type SortField = 'order_number' | 'customer_name' | 'total_amount' | 'status' | 'created_at';
@@ -126,6 +136,15 @@ export default function AdminOrdersPage() {
           notes,
           created_at,
           updated_at,
+          sendcloud_order_id,
+          sendcloud_parcel_id,
+          sendcloud_tracking_number,
+          sendcloud_tracking_url,
+          sendcloud_label_url,
+          sendcloud_status,
+          sendcloud_carrier,
+          shipped_at,
+          delivered_at,
           order_items (
             id,
             quantity,
@@ -243,6 +262,94 @@ export default function AdminOrdersPage() {
     } catch (error) {
       console.error('Failed to add tracking number:', error);
     }
+  };
+
+  const handleCreateLabel = async (orderId: string) => {
+    try {
+      setUpdatingStatus(orderId);
+
+      const response = await fetch(`/api/orders/${orderId}/labels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create label');
+      }
+
+      const result = await response.json();
+
+      // Refresh orders to show updated information
+      await loadOrders();
+
+      alert(`Étiquette créée avec succès!\nNuméro de suivi: ${result.tracking_number || 'En attente'}`);
+    } catch (error) {
+      console.error('Failed to create label:', error);
+      alert(`Erreur lors de la création de l'étiquette: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const handleViewLabel = (labelUrl: string) => {
+    window.open(labelUrl, '_blank');
+  };
+
+  const handleTrackPackage = (trackingUrl: string) => {
+    window.open(trackingUrl, '_blank');
+  };
+
+  const getSendcloudActionButton = (order: Order) => {
+    // If order doesn't have Sendcloud integration yet
+    if (!order.sendcloud_order_id) {
+      return (
+        <span className="text-xs text-gray-400" title="Commande non synchronisée avec Sendcloud">
+          Non sync.
+        </span>
+      );
+    }
+
+    // If label already exists
+    if (order.sendcloud_label_url) {
+      return (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleViewLabel(order.sendcloud_label_url!)}
+            className="text-blue-600 hover:text-blue-900"
+            title="Voir l'étiquette"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          {order.sendcloud_tracking_url && (
+            <button
+              onClick={() => handleTrackPackage(order.sendcloud_tracking_url!)}
+              className="text-green-600 hover:text-green-900"
+              title="Suivre le colis"
+            >
+              <Truck className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // If order is confirmed but no label yet
+    if (order.status === 'confirmed' || order.status === 'processing') {
+      return (
+        <button
+          onClick={() => handleCreateLabel(order.id)}
+          disabled={updatingStatus === order.id}
+          className="text-purple-600 hover:text-purple-900 disabled:opacity-50"
+          title="Créer une étiquette"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      );
+    }
+
+    return null;
   };
 
   const exportOrders = () => {
@@ -549,7 +656,12 @@ export default function AdminOrdersPage() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {order.status === 'processing' && (
+
+                      {/* Sendcloud Actions */}
+                      {getSendcloudActionButton(order)}
+
+                      {/* Legacy tracking for non-Sendcloud orders */}
+                      {!order.sendcloud_order_id && order.status === 'processing' && (
                         <button
                           onClick={() => {
                             const trackingNumber = prompt('Numéro de suivi:');
@@ -558,7 +670,7 @@ export default function AdminOrdersPage() {
                             }
                           }}
                           className="text-green-600 hover:text-green-900"
-                          title="Ajouter un numéro de suivi"
+                          title="Ajouter un numéro de suivi (manuel)"
                         >
                           <Truck className="w-4 h-4" />
                         </button>
@@ -678,10 +790,39 @@ export default function AdminOrdersPage() {
                         <span className="text-gray-600">Mode de paiement:</span>
                         <span>{selectedOrder.payment_method}</span>
                       </div>
-                      {selectedOrder.tracking_number && (
+                      {selectedOrder.sendcloud_tracking_number && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Suivi:</span>
+                          <span className="text-gray-600">Suivi Sendcloud:</span>
+                          <div className="text-right">
+                            <div className="font-mono">{selectedOrder.sendcloud_tracking_number}</div>
+                            {selectedOrder.sendcloud_carrier && (
+                              <div className="text-xs text-gray-500 uppercase">{selectedOrder.sendcloud_carrier}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {selectedOrder.sendcloud_status && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Statut expédition:</span>
+                          <span className="text-sm">{selectedOrder.sendcloud_status}</span>
+                        </div>
+                      )}
+                      {selectedOrder.tracking_number && !selectedOrder.sendcloud_tracking_number && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Suivi (manuel):</span>
                           <span className="font-mono">{selectedOrder.tracking_number}</span>
+                        </div>
+                      )}
+                      {selectedOrder.shipped_at && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Expédié le:</span>
+                          <span>{new Date(selectedOrder.shipped_at).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                      )}
+                      {selectedOrder.delivered_at && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Livré le:</span>
+                          <span>{new Date(selectedOrder.delivered_at).toLocaleDateString('fr-FR')}</span>
                         </div>
                       )}
                     </div>
@@ -693,6 +834,43 @@ export default function AdminOrdersPage() {
                       <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
                         {selectedOrder.notes}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Sendcloud Actions */}
+                  {selectedOrder.sendcloud_order_id && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-3">Actions Sendcloud</h4>
+                      <div className="flex gap-2">
+                        {selectedOrder.sendcloud_label_url && (
+                          <button
+                            onClick={() => handleViewLabel(selectedOrder.sendcloud_label_url!)}
+                            className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 flex items-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            Télécharger l'étiquette
+                          </button>
+                        )}
+                        {selectedOrder.sendcloud_tracking_url && (
+                          <button
+                            onClick={() => handleTrackPackage(selectedOrder.sendcloud_tracking_url!)}
+                            className="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 flex items-center gap-2"
+                          >
+                            <Truck className="w-4 h-4" />
+                            Suivre le colis
+                          </button>
+                        )}
+                        {!selectedOrder.sendcloud_label_url && (selectedOrder.status === 'confirmed' || selectedOrder.status === 'processing') && (
+                          <button
+                            onClick={() => handleCreateLabel(selectedOrder.id)}
+                            disabled={updatingStatus === selectedOrder.id}
+                            className="px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                          >
+                            <Send className="w-4 h-4" />
+                            Créer une étiquette
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
