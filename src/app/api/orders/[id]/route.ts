@@ -96,9 +96,9 @@ export async function GET(
       updated_at: order.updated_at,
 
       customer: {
-        email: order.customer_email,
-        first_name: order.customer_first_name,
-        last_name: order.customer_last_name
+        email: order.customers?.email,
+        first_name: order.customers?.first_name,
+        last_name: order.customers?.last_name
       },
 
       addresses: {

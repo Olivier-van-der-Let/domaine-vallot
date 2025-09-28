@@ -514,10 +514,7 @@ export const removeFromCart = async (userId: string, itemId: string) => {
 
 // Order queries
 export const createOrder = async (orderData: {
-  user_id: string
-  customer_email: string
-  customer_first_name: string
-  customer_last_name: string
+  customer_id: string
   shipping_address: any
   billing_address?: any
   items: Array<{
@@ -537,18 +534,16 @@ export const createOrder = async (orderData: {
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        user_id: orderData.user_id,
-        customer_email: orderData.customer_email,
-        customer_first_name: orderData.customer_first_name,
-        customer_last_name: orderData.customer_last_name,
+        customer_id: orderData.customer_id,
         shipping_address: orderData.shipping_address,
         billing_address: orderData.billing_address || orderData.shipping_address,
-        subtotal: orderData.subtotal,
-        vat_amount: orderData.vat_amount,
-        shipping_cost: orderData.shipping_cost,
-        total_amount: orderData.total_amount,
+        subtotal_eur: orderData.subtotal,
+        vat_amount_eur: orderData.vat_amount,
+        shipping_cost_eur: orderData.shipping_cost,
+        total_eur: orderData.total_amount,
         payment_method: orderData.payment_method || 'mollie',
         status: orderData.status || 'pending',
+        vat_rate: orderData.vat_amount > 0 ? (orderData.vat_amount / orderData.subtotal) : 0
       })
       .select()
       .single()
@@ -556,13 +551,19 @@ export const createOrder = async (orderData: {
     if (orderError) throw orderError
 
     // Insert order items
-    const orderItems = orderData.items.map(item => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.quantity * item.unit_price,
-    }))
+    const orderItems = orderData.items.map(item => {
+      const lineTotal = item.quantity * item.unit_price
+      const vatAmount = lineTotal * (orderData.vat_amount / orderData.subtotal)
+      return {
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price_eur: item.unit_price,
+        vat_rate: orderData.vat_amount > 0 ? (orderData.vat_amount / orderData.subtotal) : 0,
+        vat_amount_eur: vatAmount,
+        line_total_eur: lineTotal,
+      }
+    })
 
     const { error: itemsError } = await supabase
       .from('order_items')
@@ -574,12 +575,17 @@ export const createOrder = async (orderData: {
   })
 }
 
-export const getOrderById = async (orderId: string, userId?: string) => {
+export const getOrderById = async (orderId: string, customerId?: string) => {
   return safeQuery(async (supabase) => {
     let query = supabase
       .from('orders')
       .select(`
         *,
+        customers (
+          email,
+          first_name,
+          last_name
+        ),
         order_items (
           *,
           wine_products (*)
@@ -587,8 +593,8 @@ export const getOrderById = async (orderId: string, userId?: string) => {
       `)
       .eq('id', orderId)
 
-    if (userId) {
-      query = query.eq('user_id', userId)
+    if (customerId) {
+      query = query.eq('customer_id', customerId)
     }
 
     return query.single()

@@ -183,10 +183,7 @@ export async function POST(request: NextRequest) {
 
     // Create order in database
     const order = await createOrder({
-      user_id: user.id,
-      customer_email: orderData.customerEmail,
-      customer_first_name: orderData.customerFirstName,
-      customer_last_name: orderData.customerLastName,
+      customer_id: user.id,
       shipping_address: orderData.shippingAddress,
       billing_address: orderData.billingAddress,
       items: orderItems,
@@ -245,9 +242,9 @@ export async function POST(request: NextRequest) {
       created_at: order.created_at,
 
       customer: {
-        email: order.customer_email,
-        first_name: order.customer_first_name,
-        last_name: order.customer_last_name
+        email: orderData.customerEmail,
+        first_name: orderData.customerFirstName,
+        last_name: orderData.customerLastName
       },
 
       addresses: {
