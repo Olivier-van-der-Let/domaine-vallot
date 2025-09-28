@@ -248,8 +248,54 @@ class SendcloudClient {
       params.append('value', (value / 100).toString()) // Convert from cents
     }
 
-    const response = await this.makeRequest('GET', `/shipping_methods?${params.toString()}`)
-    return response.shipping_methods || []
+    try {
+      const response = await this.makeRequest('GET', `/shipping_methods?${params.toString()}`)
+      const shippingMethods = response.shipping_methods || []
+
+      // Validate and filter shipping methods
+      const validMethods = shippingMethods.filter((method: any, index: number) => {
+        // Basic validation
+        if (!method || typeof method !== 'object') {
+          console.warn(`Invalid shipping method at index ${index}:`, method)
+          return false
+        }
+
+        // Check required fields
+        const requiredFields = ['id', 'name', 'carrier', 'price', 'currency']
+        const missingFields = requiredFields.filter(field => method[field] === undefined || method[field] === null)
+
+        if (missingFields.length > 0) {
+          console.warn(`Shipping method missing required fields:`, {
+            method: {
+              id: method.id,
+              name: method.name,
+              carrier: method.carrier
+            },
+            missingFields
+          })
+          return false
+        }
+
+        // Log warning if characteristics are missing (but don't filter out)
+        if (!method.characteristics) {
+          console.warn(`Shipping method missing characteristics:`, {
+            id: method.id,
+            name: method.name,
+            carrier: method.carrier
+          })
+        }
+
+        return true
+      })
+
+      console.log(`Sendcloud API returned ${shippingMethods.length} methods, ${validMethods.length} valid for ${country}`)
+      return validMethods
+
+    } catch (error) {
+      console.error('Error fetching shipping methods:', error)
+      // Return empty array to allow graceful degradation
+      return []
+    }
   }
 
   /**
@@ -622,6 +668,20 @@ class SendcloudClient {
   ): boolean {
     // Wine shipping restrictions
 
+    // Defensive check: ensure method and characteristics exist
+    if (!method || !method.characteristics) {
+      console.warn('Shipping method missing characteristics:', {
+        method: method ? {
+          id: method.id,
+          name: method.name,
+          carrier: method.carrier,
+          hasCharacteristics: !!method.characteristics
+        } : null
+      })
+      // Conservative fallback: assume no tracking, no express, no signature
+      return false
+    }
+
     // Must support tracking for valuable items
     if (!method.characteristics.is_tracked) {
       return false
@@ -629,7 +689,7 @@ class SendcloudClient {
 
     // Some carriers don't support alcohol shipping
     const alcoholRestrictedCarriers = ['amazon', 'fedex_envelope']
-    if (alcoholRestrictedCarriers.includes(method.carrier.toLowerCase())) {
+    if (method.carrier && alcoholRestrictedCarriers.includes(method.carrier.toLowerCase())) {
       return false
     }
 
@@ -652,6 +712,23 @@ class SendcloudClient {
   ): boolean {
     // Wine shipping restrictions
 
+    // Defensive check: ensure option, functionalities, and carrier exist
+    if (!option || !option.functionalities || !option.carrier) {
+      console.warn('Shipping option missing required properties:', {
+        option: option ? {
+          code: option.code,
+          hasFunctionalities: !!option.functionalities,
+          hasCarrier: !!option.carrier,
+          carrier: option.carrier ? {
+            code: option.carrier.code,
+            name: option.carrier.name
+          } : null
+        } : null
+      })
+      // Conservative fallback: reject incomplete options
+      return false
+    }
+
     // Must support tracking for valuable items
     if (!option.functionalities.tracked) {
       return false
@@ -659,7 +736,7 @@ class SendcloudClient {
 
     // Some carriers don't support alcohol shipping
     const alcoholRestrictedCarriers = ['amazon', 'fedex_envelope']
-    if (alcoholRestrictedCarriers.includes(option.carrier.code.toLowerCase())) {
+    if (option.carrier.code && alcoholRestrictedCarriers.includes(option.carrier.code.toLowerCase())) {
       return false
     }
 
@@ -667,12 +744,12 @@ class SendcloudClient {
     const restrictedCountries = ['US', 'CA', 'AU'] // Countries with strict alcohol import laws
     if (restrictedCountries.includes(destinationCountry.toUpperCase())) {
       // Only allow signature required methods for restricted countries
-      return option.functionalities.signature
+      return !!option.functionalities.signature
     }
 
     // Must be suitable for home delivery or service point
     const validLastMiles = ['home_delivery', 'service_point']
-    if (!validLastMiles.includes(option.functionalities.last_mile)) {
+    if (!option.functionalities.last_mile || !validLastMiles.includes(option.functionalities.last_mile)) {
       return false
     }
 
