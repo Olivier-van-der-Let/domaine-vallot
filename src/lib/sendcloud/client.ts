@@ -260,8 +260,8 @@ class SendcloudClient {
           return false
         }
 
-        // Check required fields
-        const requiredFields = ['id', 'name', 'carrier', 'price', 'currency']
+        // Check required fields (currency is optional, will be inferred)
+        const requiredFields = ['id', 'name', 'carrier', 'price']
         const missingFields = requiredFields.filter(field => method[field] === undefined || method[field] === null)
 
         if (missingFields.length > 0) {
@@ -274,6 +274,12 @@ class SendcloudClient {
             missingFields
           })
           return false
+        }
+
+        // Add currency fallback for French wine merchant if not present
+        if (!method.currency) {
+          method.currency = 'EUR'
+          console.log(`Added currency fallback (EUR) for shipping method: ${method.name} (${method.carrier})`)
         }
 
         // Log warning if characteristics are missing (but don't filter out)
@@ -324,13 +330,31 @@ class SendcloudClient {
     )
 
     // Calculate rates
-    return wineCompatibleMethods.map(method => ({
-      shipping_method: method,
-      price: method.price,
-      currency: method.currency,
-      delivery_time: method.delivery_time,
-      service_point_required: method.service_point_input === 'required'
-    }))
+    return wineCompatibleMethods.map(method => {
+      // Extract price for destination country if main price is 0
+      let actualPrice = method.price || 0
+      let actualCurrency = method.currency || 'EUR'
+
+      // If method price is 0, look for country-specific pricing
+      if (actualPrice === 0 && method.countries && Array.isArray(method.countries)) {
+        const countryData = method.countries.find(
+          (c: any) => c.iso_2?.toUpperCase() === destination.country.toUpperCase()
+        )
+
+        if (countryData && countryData.price) {
+          actualPrice = Math.round(countryData.price * 100) // Convert euros to cents
+          console.log(`Found country-specific price for ${method.name} to ${destination.country}: €${countryData.price}`)
+        }
+      }
+
+      return {
+        shipping_method: method,
+        price: actualPrice,
+        currency: actualCurrency,
+        delivery_time: method.delivery_time,
+        service_point_required: method.service_point_input === 'required'
+      }
+    })
   }
 
   /**
@@ -668,22 +692,9 @@ class SendcloudClient {
   ): boolean {
     // Wine shipping restrictions
 
-    // Defensive check: ensure method and characteristics exist
-    if (!method || !method.characteristics) {
-      console.warn('Shipping method missing characteristics:', {
-        method: method ? {
-          id: method.id,
-          name: method.name,
-          carrier: method.carrier,
-          hasCharacteristics: !!method.characteristics
-        } : null
-      })
-      // Conservative fallback: assume no tracking, no express, no signature
-      return false
-    }
-
-    // Must support tracking for valuable items
-    if (!method.characteristics.is_tracked) {
+    // Defensive check: ensure method exists
+    if (!method) {
+      console.warn('Shipping method is null/undefined')
       return false
     }
 
@@ -693,13 +704,32 @@ class SendcloudClient {
       return false
     }
 
-    // Country-specific restrictions
+    // Country-specific restrictions for international shipments
     const restrictedCountries = ['US', 'CA', 'AU'] // Countries with strict alcohol import laws
     if (restrictedCountries.includes(destinationCountry.toUpperCase())) {
-      // Only allow express/registered methods for restricted countries
-      return method.characteristics.is_express || method.characteristics.requires_signature
+      // For restricted countries, only allow signature-based methods or express services
+      const hasSignature = method.name.toLowerCase().includes('signature') ||
+                           method.name.toLowerCase().includes('adult signature')
+      const isExpress = method.name.toLowerCase().includes('express') ||
+                        method.name.toLowerCase().includes('priority')
+
+      return hasSignature || isExpress
     }
 
+    // For EU/domestic shipping, most carriers are acceptable for wine
+    // We'll rely on proper packaging and carrier selection
+    const trustedCarriers = ['colissimo', 'ups', 'dhl', 'dpd', 'mondial_relay']
+    if (method.carrier && trustedCarriers.includes(method.carrier.toLowerCase())) {
+      return true
+    }
+
+    // Allow sendcloud test methods for development
+    if (method.carrier === 'sendcloud' && method.name.toLowerCase().includes('unstamped')) {
+      return true
+    }
+
+    // Default to allowing other methods but log for review
+    console.log(`Wine compatibility check: allowing carrier ${method.carrier} (${method.name}) - please verify wine shipping support`)
     return true
   }
 
