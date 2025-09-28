@@ -392,7 +392,7 @@ export default function CheckoutForm({
     // Clear previous errors
     setErrors({})
 
-    // Calculate order totals (using same logic as backend - prices should be in cents)
+    // Calculate order totals (using same VAT-EXCLUSIVE logic as backend)
     const subtotal = cart.items.reduce((sum: number, item: any) => {
       // Use item.price which is already in the correct format from useCart hook
       const itemPrice = item.price || 0
@@ -407,12 +407,28 @@ export default function CheckoutForm({
 
     const shippingCost = selectedShippingOption?.price || 0
 
-    // Calculate VAT (approximate - server will recalculate)
-    const vatRate = formData.shipping.country === 'FR' ? 0.20 : 0.20 // Default 20% VAT, server will calculate exact rate
-    const vatableAmount = subtotal + shippingCost
-    const vatAmount = Math.round(vatableAmount * vatRate / (1 + vatRate)) // VAT included calculation
+    // Calculate VAT using VAT-EXCLUSIVE methodology (same as backend)
+    // Note: This is an approximation - server will recalculate with exact rates
+    const getVatRate = (countryCode: string): number => {
+      const vatRates: Record<string, number> = {
+        'AT': 0.20, 'BE': 0.21, 'BG': 0.20, 'HR': 0.25, 'CY': 0.19,
+        'CZ': 0.21, 'DK': 0.25, 'EE': 0.20, 'FI': 0.24, 'FR': 0.20,
+        'DE': 0.19, 'GR': 0.24, 'HU': 0.27, 'IE': 0.23, 'IT': 0.22,
+        'LV': 0.21, 'LT': 0.21, 'LU': 0.17, 'MT': 0.18, 'NL': 0.21,
+        'PL': 0.23, 'PT': 0.23, 'RO': 0.19, 'SK': 0.20, 'SI': 0.22,
+        'ES': 0.21, 'SE': 0.25
+      }
+      return vatRates[countryCode] || 0.20 // Default to 20% for unknown countries
+    }
 
-    const totalAmount = subtotal + vatAmount + shippingCost
+    const vatRate = getVatRate(formData.shipping.country)
+
+    // VAT-EXCLUSIVE calculation (matches backend calculator.ts lines 104-105)
+    const productVat = Math.round(subtotal * vatRate)
+    const shippingVat = Math.round(shippingCost * vatRate)
+    const vatAmount = productVat + shippingVat
+
+    const totalAmount = subtotal + shippingCost + vatAmount
 
     console.log('📊 Checkout calculations:', {
       subtotal,
