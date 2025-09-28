@@ -21,7 +21,20 @@ export async function GET(request: NextRequest) {
     let totalItems = 0
 
     const formattedItems = cartItems.map(item => {
-      const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
+      // Validate and log data integrity issues
+      const priceEur = item.wine_products.price_eur
+      if (priceEur == null) {
+        console.warn('🛒 Product with null price found in cart:', {
+          productId: item.wine_products.id,
+          productName: item.wine_products.name,
+          sku: item.wine_products.sku,
+          priceEur: priceEur
+        })
+      }
+
+      // Use null-safe price handling
+      const safePriceEur = typeof priceEur === 'number' ? priceEur : 0
+      const itemTotal = item.quantity * safePriceEur
       subtotal += itemTotal // Keep as euros
       totalItems += item.quantity
 
@@ -34,8 +47,8 @@ export async function GET(request: NextRequest) {
           id: item.wine_products.id,
           name: item.wine_products.name,
           sku: item.wine_products.sku,
-          priceEur: item.wine_products.price_eur || 0,
-          price_display: (item.wine_products.price_eur || 0).toFixed(2),
+          priceEur: safePriceEur,
+          price_display: safePriceEur.toFixed(2),
           image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
           category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,
@@ -144,7 +157,20 @@ export async function POST(request: NextRequest) {
     let totalItems = 0
 
     const formattedItems = updatedCartItems.map(item => {
-      const itemTotal = item.quantity * (item.wine_products.price_eur || 0)
+      // Validate and log data integrity issues
+      const priceEur = item.wine_products.price_eur
+      if (priceEur == null) {
+        console.warn('🛒 Product with null price found in cart after add:', {
+          productId: item.wine_products.id,
+          productName: item.wine_products.name,
+          sku: item.wine_products.sku,
+          priceEur: priceEur
+        })
+      }
+
+      // Use null-safe price handling
+      const safePriceEur = typeof priceEur === 'number' ? priceEur : 0
+      const itemTotal = item.quantity * safePriceEur
       subtotal += itemTotal // Keep as euros
       totalItems += item.quantity
 
@@ -157,8 +183,8 @@ export async function POST(request: NextRequest) {
           id: item.wine_products.id,
           name: item.wine_products.name,
           sku: item.wine_products.sku,
-          priceEur: item.wine_products.price_eur || 0,
-          price_display: (item.wine_products.price_eur || 0).toFixed(2),
+          priceEur: safePriceEur,
+          price_display: safePriceEur.toFixed(2),
           image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
           category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,

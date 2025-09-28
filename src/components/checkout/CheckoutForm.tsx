@@ -341,15 +341,49 @@ export default function CheckoutForm({
       return
     }
 
-    // Validate cart items have valid pricing
-    const hasInvalidItems = cart.items.some((item: any) => !item.product?.priceEur || item.quantity <= 0)
-    if (hasInvalidItems) {
+    // Validate cart items have valid pricing and quantities
+    const invalidItems = cart.items.filter((item: any) => {
+      const hasValidPrice = item.product?.priceEur != null && typeof item.product.priceEur === 'number'
+      const hasValidQuantity = item.quantity > 0
+
+      // Debug logging for invalid items
+      if (!hasValidPrice || !hasValidQuantity) {
+        console.warn('🛒 Invalid cart item detected:', {
+          itemId: item.id,
+          productName: item.product?.name || 'Unknown',
+          priceEur: item.product?.priceEur,
+          priceType: typeof item.product?.priceEur,
+          quantity: item.quantity,
+          hasValidPrice,
+          hasValidQuantity
+        })
+      }
+
+      return !hasValidPrice || !hasValidQuantity
+    })
+
+    if (invalidItems.length > 0) {
+      // Create detailed error message
+      const itemNames = invalidItems.map(item => item.product?.name || 'Unknown item').join(', ')
+      const errorMessage = locale === 'fr'
+        ? `Articles avec des prix invalides: ${itemNames}`
+        : `Items with invalid pricing: ${itemNames}`
+
       setErrors(prev => ({
         ...prev,
-        _general: locale === 'fr'
-          ? 'Certains articles de votre panier ont des prix invalides'
-          : 'Some items in your cart have invalid pricing'
+        _general: errorMessage
       }))
+
+      console.error('🛒 Cart validation failed:', {
+        invalidItemCount: invalidItems.length,
+        invalidItems: invalidItems.map(item => ({
+          id: item.id,
+          name: item.product?.name,
+          priceEur: item.product?.priceEur,
+          quantity: item.quantity
+        }))
+      })
+
       return
     }
 
