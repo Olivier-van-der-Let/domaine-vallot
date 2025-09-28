@@ -420,16 +420,11 @@ export const productSchema = z.object({
 
 // Shipping method characteristics schema
 const shippingCharacteristicsSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  carrier: z.string(),
-  service_code: z.string(),
-  delivery_type: z.string(),
   is_tracked: z.boolean(),
   requires_signature: z.boolean(),
   is_express: z.boolean(),
   insurance: z.number().min(0),
-  restrictions: z.array(z.string())
+  last_mile: z.string()
 })
 
 // Shipping option schema for orders

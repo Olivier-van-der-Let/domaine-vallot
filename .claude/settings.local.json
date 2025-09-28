@@ -68,7 +68,8 @@
       "mcp__vercel__get_deployment",
       "mcp__firecrawl__firecrawl_search",
       "Bash(find:*)",
-      "SlashCommand(/plan)"
+      "SlashCommand(/plan)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

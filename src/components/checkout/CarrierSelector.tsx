@@ -6,7 +6,7 @@ import { CarrierOption, ShippingOptionDetails, SelectedShippingOption } from '@/
 interface CarrierSelectorProps {
   carriers: CarrierOption[]
   selectedOption: SelectedShippingOption | null
-  onOptionSelect: (option: SelectedShippingOption) => void
+  onOptionSelect: (option: SelectedShippingOption, details?: ShippingOptionDetails) => void
   loading?: boolean
   locale: string
 }
@@ -49,7 +49,7 @@ export default function CarrierSelector({
       delivery_time: option.delivery_time,
       service_point_required: option.service_point_required
     }
-    onOptionSelect(selectedShippingOption)
+    onOptionSelect(selectedShippingOption, option)
   }
 
   const isOptionSelected = (option: ShippingOptionDetails): boolean => {

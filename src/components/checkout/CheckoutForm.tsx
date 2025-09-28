@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import CarrierSelector from './CarrierSelector'
 import AddressAutocomplete, { AddressData } from '@/components/ui/AddressAutocomplete'
-import { CarrierOption, SelectedShippingOption, CarrierSelectionResponse } from '@/types'
+import { CarrierOption, SelectedShippingOption, CarrierSelectionResponse, ShippingOptionDetails } from '@/types'
 
 interface CheckoutFormProps {
   cart: any
@@ -60,6 +60,7 @@ export default function CheckoutForm({
   // New carrier selection state
   const [carriers, setCarriers] = useState<CarrierOption[]>([])
   const [selectedShippingOption, setSelectedShippingOption] = useState<SelectedShippingOption | null>(null)
+  const [selectedShippingDetails, setSelectedShippingDetails] = useState<ShippingOptionDetails | null>(null)
   const [loadingCarriers, setLoadingCarriers] = useState(false)
   // Address autocomplete state
   const [useAutocomplete, setUseAutocomplete] = useState(true)
@@ -217,7 +218,7 @@ export default function CheckoutForm({
               currency: firstOption.currency,
               delivery_time: firstOption.delivery_time,
               service_point_required: firstOption.service_point_required
-            })
+            }, firstOption)
           }
         }
       }
@@ -228,8 +229,9 @@ export default function CheckoutForm({
     }
   }
 
-  const handleShippingOptionSelect = (option: SelectedShippingOption) => {
+  const handleShippingOptionSelect = (option: SelectedShippingOption, details?: ShippingOptionDetails) => {
     setSelectedShippingOption(option)
+    setSelectedShippingDetails(details || null)
     // Update legacy selectedShipping for backward compatibility
     setSelectedShipping(option.option_code)
 
@@ -462,7 +464,17 @@ export default function CheckoutForm({
       shippingCost,
       totalAmount,
       paymentMethod: formData.payment.method,
-      shipping_option: selectedShippingOption, // Additional shipping details
+      shipping_option: selectedShippingOption && selectedShippingDetails ? {
+        code: selectedShippingOption.option_code,
+        name: selectedShippingOption.option_name,
+        carrier_code: selectedShippingOption.carrier_code,
+        carrier_name: selectedShippingOption.carrier_name,
+        price: selectedShippingOption.price,
+        currency: selectedShippingOption.currency,
+        delivery_time: selectedShippingOption.delivery_time,
+        service_point_required: selectedShippingOption.service_point_required,
+        characteristics: selectedShippingDetails.characteristics
+      } : undefined,
       locale
     }
 
