@@ -83,8 +83,8 @@ BEGIN
         random_part := LPAD(FLOOR(RANDOM() * 9999 + 1)::TEXT, 4, '0');
         order_number := 'DV-' || date_part || '-' || random_part;
 
-        -- Check if it exists
-        IF NOT EXISTS(SELECT 1 FROM orders WHERE order_number = order_number) THEN
+        -- Check if it exists (qualify column to avoid ambiguity)
+        IF NOT EXISTS(SELECT 1 FROM orders WHERE orders.order_number = order_number) THEN
             RETURN order_number;
         END IF;
 
