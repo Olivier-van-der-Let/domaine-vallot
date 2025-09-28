@@ -128,22 +128,18 @@ export async function POST(request: NextRequest) {
           const carrierName = option.carrier?.name || carrier.name
 
           // Enhanced characteristic mapping with carrier-specific defaults
+          // Map to schema-compliant format for order validation
           const characteristics = {
-            id: option.id || option.code || `${carrierCode}-${option.code}`,
-            name: option.product?.name || option.name || option.code,
-            carrier: carrierName,
-            service_code: option.code,
-            delivery_type: functionalities.last_mile || 'home_delivery',
             is_tracked: getTrackedDefault(functionalities.tracked, carrierCode),
             requires_signature: getSignatureDefault(functionalities.signature, carrierCode),
             is_express: isExpressService(functionalities.delivery_deadline, option.product?.name, carrierCode),
             insurance: functionalities.insurance || 0,
-            restrictions: getCarrierRestrictions(carrierCode)
+            last_mile: mapLastMileValue(functionalities.last_mile, carrierCode)
           }
 
           return {
             code: option.code,
-            name: characteristics.name,
+            name: option.product?.name || option.name || option.code,
             carrier_code: carrierCode,
             carrier_name: carrierName,
             price: price,
@@ -209,18 +205,13 @@ function getFallbackCarriers(country: string, totalWeight: number, totalValue: n
             delivery_deadline: 'standard',
             service_area: isEU ? 'domestic' : 'international'
           },
-          // Add complete characteristics for fallback
+          // Schema-compliant characteristics for fallback
           characteristics: {
-            id: 'postnl-standard',
-            name: 'PostNL Standard',
-            carrier: 'PostNL',
-            service_code: 'postnl-standard',
-            delivery_type: 'home_delivery',
             is_tracked: true,
             requires_signature: false,
             is_express: false,
             insurance: totalValue > 5000 ? 500 : 0,
-            restrictions: ['age_verification_required']
+            last_mile: 'home'
           },
           weight: {
             min: { value: '0.1', unit: 'kg' },
@@ -253,18 +244,13 @@ function getFallbackCarriers(country: string, totalWeight: number, totalValue: n
             delivery_deadline: 'standard',
             service_area: 'domestic'
           },
-          // Add complete characteristics for fallback
+          // Schema-compliant characteristics for fallback
           characteristics: {
-            id: 'dpd-classic',
-            name: 'DPD Classic',
-            carrier: 'DPD',
-            service_code: 'dpd-classic',
-            delivery_type: 'home_delivery',
             is_tracked: true,
             requires_signature: true,
             is_express: false,
             insurance: totalValue > 5000 ? 500 : 0,
-            restrictions: ['age_verification_required']
+            last_mile: 'home'
           },
           weight: {
             min: { value: '0.1', unit: 'kg' },
@@ -399,6 +385,45 @@ function isExpressService(deliveryDeadline: string | undefined, serviceName: str
   }
 
   return false
+}
+
+/**
+ * Map Sendcloud last_mile functionality to schema-compliant values
+ */
+function mapLastMileValue(lastMile: string | undefined, carrierCode: string): string {
+  // Handle explicit last mile values from Sendcloud API
+  if (lastMile) {
+    switch (lastMile.toLowerCase()) {
+      case 'home_delivery':
+      case 'home':
+        return 'home'
+      case 'service_point':
+      case 'pickup_point':
+      case 'parcel_shop':
+        return 'pickup_point'
+      case 'locker':
+      case 'parcel_locker':
+        return 'locker'
+      default:
+        return lastMile
+    }
+  }
+
+  // Carrier-specific defaults when last_mile is not specified
+  const lowerCarrier = carrierCode.toLowerCase()
+
+  // Service point only carriers
+  if (lowerCarrier.includes('mondial_relay')) {
+    return 'pickup_point'
+  }
+
+  // Locker services
+  if (lowerCarrier.includes('dhl') && lowerCarrier.includes('locker')) {
+    return 'locker'
+  }
+
+  // Default to home delivery for most carriers
+  return 'home'
 }
 
 /**
