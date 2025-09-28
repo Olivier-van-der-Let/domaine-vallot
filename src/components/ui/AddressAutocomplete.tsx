@@ -43,7 +43,7 @@ export default function AddressAutocomplete({
 
   useEffect(() => {
     // Get API key from environment or use a placeholder for development
-    const key = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'demo_key'
+    const key = process.env.GEOAPIFY_API_KEY || 'demo_key'
     setApiKey(key)
   }, [])
 
