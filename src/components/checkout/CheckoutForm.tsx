@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import CarrierSelector from './CarrierSelector'
+import AddressAutocomplete, { AddressData } from '@/components/ui/AddressAutocomplete'
 import { CarrierOption, SelectedShippingOption, CarrierSelectionResponse } from '@/types'
 
 interface CheckoutFormProps {
@@ -60,6 +61,8 @@ export default function CheckoutForm({
   const [carriers, setCarriers] = useState<CarrierOption[]>([])
   const [selectedShippingOption, setSelectedShippingOption] = useState<SelectedShippingOption | null>(null)
   const [loadingCarriers, setLoadingCarriers] = useState(false)
+  // Address autocomplete state
+  const [useAutocomplete, setUseAutocomplete] = useState(true)
 
   // Validation functions
   const validateEmail = (email: string): boolean => {
@@ -239,6 +242,39 @@ export default function CheckoutForm({
     if (onShippingOptionChange) {
       onShippingOptionChange(option)
     }
+  }
+
+  const handleAddressSelect = (addressData: AddressData) => {
+    // Update form data with selected address
+    setFormData(prev => ({
+      ...prev,
+      shipping: {
+        ...prev.shipping,
+        address: addressData.houseNumber
+          ? `${addressData.houseNumber} ${addressData.street}`
+          : addressData.street,
+        city: addressData.city,
+        postalCode: addressData.postalCode,
+        country: addressData.countryCode || addressData.country
+      }
+    }))
+
+    // Clear any previous address-related errors
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors['shipping.address']
+      delete newErrors['shipping.city']
+      delete newErrors['shipping.postalCode']
+      return newErrors
+    })
+
+    // Mark address fields as touched since they were auto-filled
+    setTouched(prev => ({
+      ...prev,
+      'shipping.address': true,
+      'shipping.city': true,
+      'shipping.postalCode': true
+    }))
   }
 
   const validateForm = (): boolean => {
@@ -458,20 +494,41 @@ export default function CheckoutForm({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {locale === 'fr' ? 'Adresse' : 'Street Address'} *
                 </label>
-                <input
-                  type="text"
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors['shipping.address'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  data-testid="shipping-address"
-                  value={formData.shipping.address}
-                  onChange={(e) => handleFieldChange('shipping', 'address', e.target.value)}
-                  onBlur={() => handleFieldBlur('shipping', 'address')}
-                  placeholder={locale === 'fr' ? '123 Rue de la Paix' : '123 Main Street'}
-                />
-                {errors['shipping.address'] && (
-                  <p className="mt-1 text-sm text-red-600">{errors['shipping.address']}</p>
+                {useAutocomplete ? (
+                  <AddressAutocomplete
+                    onAddressSelect={handleAddressSelect}
+                    placeholder={locale === 'fr' ? '123 Rue de la Paix' : '123 Main Street'}
+                    locale={locale}
+                    initialValue={formData.shipping.address}
+                    required
+                    error={errors['shipping.address']}
+                    countries={['FR', 'DE', 'IT', 'ES', 'BE', 'NL', 'AT', 'PT', 'LU', 'GB']}
+                  />
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                        errors['shipping.address'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      data-testid="shipping-address"
+                      value={formData.shipping.address}
+                      onChange={(e) => handleFieldChange('shipping', 'address', e.target.value)}
+                      onBlur={() => handleFieldBlur('shipping', 'address')}
+                      placeholder={locale === 'fr' ? '123 Rue de la Paix' : '123 Main Street'}
+                    />
+                    {errors['shipping.address'] && (
+                      <p className="mt-1 text-sm text-red-600">{errors['shipping.address']}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setUseAutocomplete(true)}
+                      className="text-sm text-blue-600 hover:text-blue-700 underline mt-1"
+                    >
+                      {locale === 'fr' ? 'Utiliser l\'autocomplétion' : 'Use autocomplete'}
+                    </button>
+                  </>
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
