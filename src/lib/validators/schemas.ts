@@ -418,6 +418,33 @@ export const productSchema = z.object({
   galleryImages: z.array(z.string().url()).max(10, 'Maximum 10 gallery images').optional()
 })
 
+// Shipping method characteristics schema
+const shippingCharacteristicsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  carrier: z.string(),
+  service_code: z.string(),
+  delivery_type: z.string(),
+  is_tracked: z.boolean(),
+  requires_signature: z.boolean(),
+  is_express: z.boolean(),
+  insurance: z.number().min(0),
+  restrictions: z.array(z.string())
+})
+
+// Shipping option schema for orders
+const shippingOptionSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  carrier_code: z.string(),
+  carrier_name: z.string(),
+  price: z.number().min(0),
+  currency: z.string(),
+  delivery_time: z.string().optional(),
+  service_point_required: z.boolean().optional(),
+  characteristics: shippingCharacteristicsSchema
+})
+
 // Order schemas
 export const orderSchema = z.object({
   customerId: z.string().uuid('Invalid customer ID').optional(),
@@ -436,6 +463,7 @@ export const orderSchema = z.object({
   shippingCost: z.number().min(0, 'Shipping cost cannot be negative'),
   totalAmount: z.number().min(1, 'Total amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
+  shipping_option: shippingOptionSchema.optional(),
   specialInstructions: z.string().max(500, 'Special instructions too long').optional(),
   giftMessage: z.string().max(200, 'Gift message too long').optional()
 })

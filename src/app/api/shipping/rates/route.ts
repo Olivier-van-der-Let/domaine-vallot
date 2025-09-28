@@ -31,17 +31,34 @@ export async function POST(request: NextRequest) {
       totalValue
     )
 
-    const formattedRates = shippingRates.map(rate => ({
-      id: rate.shipping_method.id,
-      name: rate.shipping_method.name,
-      carrier: rate.shipping_method.carrier,
-      price: rate.price,
-      price_display: (rate.price / 100).toFixed(2),
-      currency: rate.currency,
-      delivery_time: rate.delivery_time,
-      service_point_required: rate.service_point_required,
-      characteristics: rate.shipping_method.characteristics
-    }))
+    const formattedRates = shippingRates.map(rate => {
+      // Ensure complete characteristics structure for shipping rates
+      const characteristics = rate.shipping_method.characteristics || {}
+      const carrierCode = rate.shipping_method.carrier || 'unknown'
+
+      return {
+        id: rate.shipping_method.id,
+        name: rate.shipping_method.name,
+        carrier: carrierCode,
+        price: rate.price,
+        price_display: (rate.price / 100).toFixed(2),
+        currency: rate.currency,
+        delivery_time: rate.delivery_time,
+        service_point_required: rate.service_point_required,
+        characteristics: {
+          id: rate.shipping_method.id || `${carrierCode}-${rate.shipping_method.name}`,
+          name: rate.shipping_method.name,
+          carrier: carrierCode,
+          service_code: rate.shipping_method.id?.toString() || carrierCode,
+          delivery_type: rate.service_point_required ? 'service_point' : 'home_delivery',
+          is_tracked: characteristics.is_tracked ?? true, // Default to true for wine shipping
+          requires_signature: characteristics.requires_signature ?? false,
+          is_express: characteristics.is_express ?? false,
+          insurance: 0,
+          restrictions: ['age_verification_required']
+        }
+      }
+    })
 
     return NextResponse.json({
       rates: formattedRates,
