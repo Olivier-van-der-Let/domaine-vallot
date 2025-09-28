@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
       items: orderItems,
       subtotal,
       vat_amount: vatCalculation.vat_amount,
+      vat_rate: vatCalculation.vat_rate, // Pass the correct VAT rate from calculator
       shipping_cost: shippingCost,
       total_amount: totalAmount,
       payment_method: orderData.paymentMethod,

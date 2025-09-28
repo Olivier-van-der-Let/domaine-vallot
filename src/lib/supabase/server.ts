@@ -524,6 +524,7 @@ export const createOrder = async (orderData: {
   }>
   subtotal: number
   vat_amount: number
+  vat_rate: number // VAT rate as decimal (e.g., 0.20 for 20%)
   shipping_cost: number
   total_amount: number
   payment_method?: string
@@ -543,7 +544,7 @@ export const createOrder = async (orderData: {
         total_eur: orderData.total_amount,
         payment_method: orderData.payment_method || 'mollie',
         status: orderData.status || 'pending',
-        vat_rate: orderData.vat_amount > 0 ? (orderData.vat_amount / orderData.subtotal) : 0
+        vat_rate: orderData.vat_rate * 100 // Convert decimal rate (0.20) to percentage (20.00) for DB storage
       })
       .select()
       .single()
@@ -553,13 +554,13 @@ export const createOrder = async (orderData: {
     // Insert order items
     const orderItems = orderData.items.map(item => {
       const lineTotal = item.quantity * item.unit_price
-      const vatAmount = lineTotal * (orderData.vat_amount / orderData.subtotal)
+      const vatAmount = lineTotal * orderData.vat_rate // Use the proper VAT rate directly
       return {
         order_id: order.id,
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price_eur: item.unit_price,
-        vat_rate: orderData.vat_amount > 0 ? (orderData.vat_amount / orderData.subtotal) : 0,
+        vat_rate: orderData.vat_rate * 100, // Convert decimal to percentage for DB storage
         vat_amount_eur: vatAmount,
         line_total_eur: lineTotal,
       }
