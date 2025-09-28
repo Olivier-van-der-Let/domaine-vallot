@@ -402,9 +402,9 @@ export function useCart(): UseCartReturn {
     await fetchCart()
   }, [fetchCart])
 
-  // Update shipping cost
+  // Update shipping cost (convert from cents to euros)
   const updateShippingCost = useCallback((cost: number) => {
-    setShippingCost(cost)
+    setShippingCost(cost / 100)
   }, [])
 
   // Load cart on mount
