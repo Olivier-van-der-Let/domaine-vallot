@@ -330,17 +330,97 @@ export default function CheckoutForm({
       return
     }
 
+    // Validate cart has items
+    if (!cart?.items || cart.items.length === 0) {
+      setErrors(prev => ({
+        ...prev,
+        _general: locale === 'fr'
+          ? 'Votre panier est vide'
+          : 'Your cart is empty'
+      }))
+      return
+    }
+
+    // Validate cart items have valid pricing
+    const hasInvalidItems = cart.items.some((item: any) => !item.product?.priceEur || item.quantity <= 0)
+    if (hasInvalidItems) {
+      setErrors(prev => ({
+        ...prev,
+        _general: locale === 'fr'
+          ? 'Certains articles de votre panier ont des prix invalides'
+          : 'Some items in your cart have invalid pricing'
+      }))
+      return
+    }
+
     // Clear previous errors
     setErrors({})
 
+    // Calculate order totals
+    const subtotal = cart.items.reduce((sum: number, item: any) =>
+      sum + (item.quantity * (item.product?.priceEur ? item.product.priceEur * 100 : 0)), 0
+    )
+
+    const shippingCost = selectedShippingOption?.price || 0
+
+    // Calculate VAT (approximate - server will recalculate)
+    const vatRate = formData.shipping.country === 'FR' ? 0.20 : 0.20 // Default 20% VAT, server will calculate exact rate
+    const vatableAmount = subtotal + shippingCost
+    const vatAmount = Math.round(vatableAmount * vatRate / (1 + vatRate)) // VAT included calculation
+
+    const totalAmount = subtotal + vatAmount + shippingCost
+
+    console.log('📊 Checkout calculations:', {
+      subtotal,
+      shippingCost,
+      vatAmount,
+      totalAmount,
+      vatRate,
+      country: formData.shipping.country
+    })
+
+    // Transform data to match orderSchema format
     const submissionData = {
-      cart,
-      customer: formData.customer,
-      shipping_address: formData.shipping,
-      billing_address: formData.billing.sameAsShipping ? formData.shipping : formData.billing,
-      shipping_method_id: selectedShipping, // Keep for backward compatibility
-      shipping_option: selectedShippingOption, // New detailed shipping option
-      payment_method: formData.payment.method,
+      customerEmail: formData.customer.email,
+      customerFirstName: formData.customer.firstName,
+      customerLastName: formData.customer.lastName,
+      shippingAddress: {
+        firstName: formData.customer.firstName,
+        lastName: formData.customer.lastName,
+        address: formData.shipping.address,
+        city: formData.shipping.city,
+        postalCode: formData.shipping.postalCode,
+        country: formData.shipping.country,
+        phone: formData.customer.phone
+      },
+      billingAddress: formData.billing.sameAsShipping ? {
+        firstName: formData.customer.firstName,
+        lastName: formData.customer.lastName,
+        address: formData.shipping.address,
+        city: formData.shipping.city,
+        postalCode: formData.shipping.postalCode,
+        country: formData.shipping.country,
+        phone: formData.customer.phone
+      } : {
+        firstName: formData.customer.firstName,
+        lastName: formData.customer.lastName,
+        address: formData.billing.address,
+        city: formData.billing.city,
+        postalCode: formData.billing.postalCode,
+        country: formData.billing.country,
+        phone: formData.customer.phone
+      },
+      items: cart.items.map((item: any) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.product?.priceEur ? item.product.priceEur * 100 : 0
+      })),
+      subtotal,
+      vatAmount,
+      shippingCost,
+      totalAmount,
+      paymentMethod: formData.payment.method,
+      shipping_option: selectedShippingOption, // Additional shipping details
       locale
     }
 
