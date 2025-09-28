@@ -427,10 +427,11 @@ export function useCart(): UseCartReturn {
   const cart = items.length > 0 ? {
     items: items.map(item => ({
       id: item.id,
+      productId: item.productId || item.product?.id, // Include product ID for order submission, fallback to product.id
       name: item.product.name,
       price: item.product.priceEur || 0,
       quantity: item.quantity,
-      image_url: item.product.image_url,
+      image_url: item.product.image_url || '/images/default-wine.jpg',
       vintage: item.product.vintage,
       weight: 750 // Default wine bottle weight in grams
     })),

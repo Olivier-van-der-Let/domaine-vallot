@@ -447,9 +447,13 @@ export const getCartItems = async (userId: string) => {
       .from('cart_items')
       .select(`
         *,
-        wine_products (*)
+        wine_products (
+          *,
+          product_images!inner (url, alt_text_en, is_primary, display_order)
+        )
       `)
       .eq('customer_id', userId)
+      .eq('wine_products.product_images.is_primary', true)
   })
 }
 

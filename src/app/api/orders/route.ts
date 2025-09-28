@@ -18,9 +18,25 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json()
+
+    // 🔍 DEBUG: Log incoming order data
+    console.log('📦 Orders API - Received payload:', {
+      subtotal: body.subtotal,
+      vatAmount: body.vatAmount,
+      shippingCost: body.shippingCost,
+      totalAmount: body.totalAmount,
+      items: body.items?.map((item: any) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      })),
+      customerEmail: body.customerEmail
+    })
+
     const validation = validateSchema(orderSchema, body)
 
     if (!validation.success) {
+      console.error('❌ Schema validation failed:', validation.errors)
       return NextResponse.json(
         { error: 'Invalid order data', details: validation.errors },
         { status: 400 }
@@ -59,16 +75,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate order totals
+    console.log('🛒 Backend cart items for calculation:', cartItems.map(item => ({
+      product_id: item.product_id,
+      product_name: item.wine_products?.name,
+      quantity: item.quantity,
+      price_eur_from_db: item.wine_products?.price_eur,
+      price_from_db: item.wine_products?.price,
+      price_eur_type: typeof item.wine_products?.price_eur,
+      using_price_eur: true // Now using price_eur field like cart API
+    })))
+
     const orderItems = cartItems.map(item => ({
       product_id: item.product_id,
       quantity: item.quantity,
-      unit_price: item.wine_products.price
+      unit_price: item.wine_products.price_eur // Use same field as cart API
     }))
+
+    console.log('💰 Backend order items for calculation:', orderItems)
 
     const subtotal = orderItems.reduce(
       (sum, item) => sum + (item.quantity * item.unit_price),
       0
     )
+
+    console.log('🧮 Backend calculated subtotal:', subtotal)
 
     // Calculate shipping cost based on selected shipping option
     let shippingCost = 0
@@ -113,11 +143,26 @@ export async function POST(request: NextRequest) {
 
     // Validate calculated totals match provided totals (prevent tampering)
     const toleranceInCents = 10 // Allow 10 cent tolerance for rounding
+
+    // 🔍 DEBUG: Detailed comparison logging
+    const subtotalDiff = Math.abs(orderData.subtotal - subtotal)
+    const vatDiff = Math.abs(orderData.vatAmount - vatCalculation.vat_amount)
+    const shippingDiff = Math.abs(orderData.shippingCost - shippingCost)
+    const totalDiff = Math.abs(orderData.totalAmount - totalAmount)
+
+    console.log('🧮 Validation comparison:', {
+      subtotal: { provided: orderData.subtotal, calculated: subtotal, diff: subtotalDiff, exceeds: subtotalDiff > toleranceInCents },
+      vat: { provided: orderData.vatAmount, calculated: vatCalculation.vat_amount, diff: vatDiff, exceeds: vatDiff > toleranceInCents },
+      shipping: { provided: orderData.shippingCost, calculated: shippingCost, diff: shippingDiff, exceeds: shippingDiff > toleranceInCents },
+      total: { provided: orderData.totalAmount, calculated: totalAmount, diff: totalDiff, exceeds: totalDiff > toleranceInCents },
+      tolerance: toleranceInCents
+    })
+
     if (
-      Math.abs(orderData.subtotal - subtotal) > toleranceInCents ||
-      Math.abs(orderData.vatAmount - vatCalculation.vat_amount) > toleranceInCents ||
-      Math.abs(orderData.shippingCost - shippingCost) > toleranceInCents ||
-      Math.abs(orderData.totalAmount - totalAmount) > toleranceInCents
+      subtotalDiff > toleranceInCents ||
+      vatDiff > toleranceInCents ||
+      shippingDiff > toleranceInCents ||
+      totalDiff > toleranceInCents
     ) {
       return NextResponse.json({
         error: 'Order total mismatch',

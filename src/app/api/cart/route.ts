@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
           sku: item.wine_products.sku,
           priceEur: safePriceEur,
           price_display: safePriceEur.toFixed(2),
-          image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
+          image_url: item.wine_products.product_images?.[0]?.url || '/images/default-wine.jpg',
           category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,
           stock_quantity: item.wine_products.stock_quantity,
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
           sku: item.wine_products.sku,
           priceEur: safePriceEur,
           price_display: safePriceEur.toFixed(2),
-          image_url: '/images/default-wine.jpg', // TODO: Add actual image handling
+          image_url: item.wine_products.product_images?.[0]?.url || '/images/default-wine.jpg',
           category: item.wine_products.varietal || 'Wine',
           vintage: item.wine_products.vintage,
           stock_quantity: item.wine_products.stock_quantity,

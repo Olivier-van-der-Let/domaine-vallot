@@ -343,16 +343,16 @@ export default function CheckoutForm({
 
     // Validate cart items have valid pricing and quantities
     const invalidItems = cart.items.filter((item: any) => {
-      const hasValidPrice = item.product?.priceEur != null && typeof item.product.priceEur === 'number'
+      const hasValidPrice = item.price != null && typeof item.price === 'number'
       const hasValidQuantity = item.quantity > 0
 
       // Debug logging for invalid items
       if (!hasValidPrice || !hasValidQuantity) {
         console.warn('🛒 Invalid cart item detected:', {
           itemId: item.id,
-          productName: item.product?.name || 'Unknown',
-          priceEur: item.product?.priceEur,
-          priceType: typeof item.product?.priceEur,
+          productName: item.name || 'Unknown',
+          price: item.price,
+          priceType: typeof item.price,
           quantity: item.quantity,
           hasValidPrice,
           hasValidQuantity
@@ -364,7 +364,7 @@ export default function CheckoutForm({
 
     if (invalidItems.length > 0) {
       // Create detailed error message
-      const itemNames = invalidItems.map(item => item.product?.name || 'Unknown item').join(', ')
+      const itemNames = invalidItems.map(item => item.name || 'Unknown item').join(', ')
       const errorMessage = locale === 'fr'
         ? `Articles avec des prix invalides: ${itemNames}`
         : `Items with invalid pricing: ${itemNames}`
@@ -378,8 +378,8 @@ export default function CheckoutForm({
         invalidItemCount: invalidItems.length,
         invalidItems: invalidItems.map(item => ({
           id: item.id,
-          name: item.product?.name,
-          priceEur: item.product?.priceEur,
+          name: item.name,
+          price: item.price,
           quantity: item.quantity
         }))
       })
@@ -390,10 +390,18 @@ export default function CheckoutForm({
     // Clear previous errors
     setErrors({})
 
-    // Calculate order totals
-    const subtotal = cart.items.reduce((sum: number, item: any) =>
-      sum + (item.quantity * (item.product?.priceEur ? item.product.priceEur * 100 : 0)), 0
-    )
+    // Calculate order totals (using same logic as backend - prices should be in cents)
+    const subtotal = cart.items.reduce((sum: number, item: any) => {
+      // Use item.price which is already in the correct format from useCart hook
+      const itemPrice = item.price || 0
+      console.log('💰 Cart item price calculation:', {
+        itemName: item.name,
+        quantity: item.quantity,
+        itemPrice: itemPrice,
+        itemTotal: item.quantity * itemPrice
+      })
+      return sum + (item.quantity * itemPrice)
+    }, 0)
 
     const shippingCost = selectedShippingOption?.price || 0
 
@@ -445,9 +453,9 @@ export default function CheckoutForm({
         phone: formData.customer.phone
       },
       items: cart.items.map((item: any) => ({
-        productId: item.productId,
+        productId: item.productId, // Use correct product ID
         quantity: item.quantity,
-        unitPrice: item.product?.priceEur ? item.product.priceEur * 100 : 0
+        unitPrice: item.price || 0 // Use consistent price field
       })),
       subtotal,
       vatAmount,
@@ -457,6 +465,26 @@ export default function CheckoutForm({
       shipping_option: selectedShippingOption, // Additional shipping details
       locale
     }
+
+    // 🔍 DEBUG: Log complete submission payload
+    console.log('🚀 Frontend - Complete submission data:', {
+      totals: {
+        subtotal: submissionData.subtotal,
+        vatAmount: submissionData.vatAmount,
+        shippingCost: submissionData.shippingCost,
+        totalAmount: submissionData.totalAmount
+      },
+      items: submissionData.items,
+      cartItemsUsedForCalculation: cart.items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        calculatedTotal: item.quantity * item.price
+      })),
+      shippingOption: submissionData.shipping_option
+    })
 
     try {
       await onSubmit(submissionData)

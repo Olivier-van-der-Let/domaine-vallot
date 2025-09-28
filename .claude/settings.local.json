@@ -66,7 +66,8 @@
       "mcp__vercel__get_project",
       "mcp__playwright__browser_select_option",
       "mcp__vercel__get_deployment",
-      "mcp__firecrawl__firecrawl_search"
+      "mcp__firecrawl__firecrawl_search",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
