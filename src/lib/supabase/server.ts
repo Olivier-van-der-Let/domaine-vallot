@@ -554,7 +554,7 @@ export const createOrder = async (orderData: {
     // Insert order items
     const orderItems = orderData.items.map(item => {
       const lineTotal = item.quantity * item.unit_price
-      const vatAmount = lineTotal * orderData.vat_rate // Use the proper VAT rate directly
+      const vatAmount = Math.round((lineTotal * orderData.vat_rate) * 100) / 100 // Round to 2 decimal places for euros
       return {
         order_id: order.id,
         product_id: item.product_id,
@@ -562,7 +562,7 @@ export const createOrder = async (orderData: {
         unit_price_eur: item.unit_price,
         vat_rate: orderData.vat_rate * 100, // Convert decimal to percentage for DB storage
         vat_amount_eur: vatAmount,
-        line_total_eur: lineTotal,
+        line_total_eur: lineTotal + vatAmount, // Include VAT in line total
       }
     })
 

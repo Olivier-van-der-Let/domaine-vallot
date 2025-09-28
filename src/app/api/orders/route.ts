@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     const shippingDiff = Math.abs(orderData.shippingCost - shippingCost)
     const totalDiff = Math.abs(orderData.totalAmount - totalAmount)
 
-    console.log('🧮 Validation comparison:', {
+    console.log('🧮 Validation comparison (all amounts in cents):', {
       subtotal: { provided: orderData.subtotal, calculated: subtotal, diff: subtotalDiff, exceeds: subtotalDiff > toleranceInCents },
       vat: { provided: orderData.vatAmount, calculated: vatCalculation.vat_amount, diff: vatDiff, exceeds: vatDiff > toleranceInCents },
       shipping: { provided: orderData.shippingCost, calculated: shippingCost, diff: shippingDiff, exceeds: shippingDiff > toleranceInCents },
@@ -177,21 +177,49 @@ export async function POST(request: NextRequest) {
           vatAmount: orderData.vatAmount,
           shippingCost: orderData.shippingCost,
           totalAmount: orderData.totalAmount
+        },
+        debug: {
+          differences: {
+            subtotal: subtotalDiff,
+            vat: vatDiff,
+            shipping: shippingDiff,
+            total: totalDiff
+          },
+          tolerance: toleranceInCents,
+          note: 'All amounts compared in cents before euro conversion'
         }
       }, { status: 400 })
     }
+
+    // Convert amounts from cents to euros for database storage
+    // The frontend calculates in cents, but the database expects euros
+    console.log('💰 Converting amounts from cents to euros for database storage:', {
+      subtotal_cents: subtotal,
+      subtotal_euros: subtotal / 100,
+      vat_amount_cents: vatCalculation.vat_amount,
+      vat_amount_euros: vatCalculation.vat_amount / 100,
+      shipping_cost_cents: shippingCost,
+      shipping_cost_euros: shippingCost / 100,
+      total_amount_cents: totalAmount,
+      total_amount_euros: totalAmount / 100,
+      vat_rate_decimal: vatCalculation.vat_rate,
+      vat_rate_percentage: vatCalculation.vat_rate * 100
+    })
 
     // Create order in database
     const order = await createOrder({
       customer_id: user.id,
       shipping_address: orderData.shippingAddress,
       billing_address: orderData.billingAddress,
-      items: orderItems,
-      subtotal,
-      vat_amount: vatCalculation.vat_amount,
-      vat_rate: vatCalculation.vat_rate, // Pass the correct VAT rate from calculator
-      shipping_cost: shippingCost,
-      total_amount: totalAmount,
+      items: orderItems.map(item => ({
+        ...item,
+        unit_price: item.unit_price / 100 // Convert unit prices from cents to euros
+      })),
+      subtotal: subtotal / 100, // Convert from cents to euros
+      vat_amount: vatCalculation.vat_amount / 100, // Convert from cents to euros
+      vat_rate: vatCalculation.vat_rate, // Keep as decimal (0.21) - will be converted to percentage in createOrder
+      shipping_cost: shippingCost / 100, // Convert from cents to euros
+      total_amount: totalAmount / 100, // Convert from cents to euros
       payment_method: orderData.paymentMethod,
       status: 'pending'
     })
