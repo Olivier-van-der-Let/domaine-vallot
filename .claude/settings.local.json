@@ -69,7 +69,9 @@
       "mcp__firecrawl__firecrawl_search",
       "Bash(find:*)",
       "SlashCommand(/plan)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npx supabase:*)",
+      "mcp__supabase__list_migrations"
     ],
     "deny": [],
     "ask": []

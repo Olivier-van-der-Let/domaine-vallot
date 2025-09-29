@@ -93,12 +93,14 @@ export async function POST(request: NextRequest) {
 
     console.log('💰 Backend order items for calculation:', orderItems)
 
+    // Calculate subtotal in cents to match frontend calculation
     const subtotal = orderItems.reduce(
-      (sum, item) => sum + (item.quantity * item.unit_price),
+      (sum, item) => sum + (item.quantity * Math.round(item.unit_price * 100)),
       0
     )
 
-    console.log('🧮 Backend calculated subtotal:', subtotal)
+    console.log('🧮 Backend calculated subtotal (in cents):', subtotal)
+    console.log('🔧 VAT calculation fix applied - backend now calculates in cents')
 
     // Calculate shipping cost based on selected shipping option
     let shippingCost = 0
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
       const shippingRates = await calculateWineShipping(
         orderData.shippingAddress,
         totalBottles,
-        subtotal
+        subtotal / 100 // Convert cents back to euros for shipping calculation
       )
       shippingCost = shippingRates.length > 0 ? shippingRates[0].price : 0
     }

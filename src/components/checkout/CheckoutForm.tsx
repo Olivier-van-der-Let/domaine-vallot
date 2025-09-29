@@ -392,23 +392,25 @@ export default function CheckoutForm({
     // Clear previous errors
     setErrors({})
 
-    // Calculate order totals (using same VAT-EXCLUSIVE logic as backend)
+    // Calculate order totals - convert cart item prices to cents
     const subtotal = cart.items.reduce((sum: number, item: any) => {
-      // Use item.price which is already in the correct format from useCart hook
-      const itemPrice = item.price || 0
-      console.log('💰 Cart item price calculation:', {
+      // Cart provides prices in euros, convert to cents for calculation
+      const itemPriceEuros = item.price || 0
+      const itemPriceCents = Math.round(itemPriceEuros * 100)
+      console.log('💰 Cart item price calculation (converting to cents):', {
         itemName: item.name,
         quantity: item.quantity,
-        itemPrice: itemPrice,
-        itemTotal: item.quantity * itemPrice
+        itemPriceEuros: itemPriceEuros,
+        itemPriceCents: itemPriceCents,
+        itemTotalCents: item.quantity * itemPriceCents
       })
-      return sum + (item.quantity * itemPrice)
+      return sum + (item.quantity * itemPriceCents)
     }, 0)
 
-    const shippingCost = selectedShippingOption?.price || 0
+    // IMPORTANT: selectedShippingOption.price is already in cents from the shipping API
+    const shippingCostCents = selectedShippingOption?.price || 0
 
-    // Calculate VAT using VAT-EXCLUSIVE methodology (same as backend)
-    // Note: This is an approximation - server will recalculate with exact rates
+    // Calculate VAT using CENTS methodology (same as backend)
     const getVatRate = (countryCode: string): number => {
       const vatRates: Record<string, number> = {
         'AT': 0.20, 'BE': 0.21, 'BG': 0.20, 'HR': 0.25, 'CY': 0.19,
@@ -423,20 +425,22 @@ export default function CheckoutForm({
 
     const vatRate = getVatRate(formData.shipping.country)
 
-    // VAT-EXCLUSIVE calculation (matches backend calculator.ts lines 104-105)
-    const productVat = Math.round(subtotal * vatRate)
-    const shippingVat = Math.round(shippingCost * vatRate)
+    // VAT calculation in cents (matches backend calculator.ts)
+    const productVat = Math.round(subtotal * vatRate)  // subtotal is already in cents
+    const shippingVat = Math.round(shippingCostCents * vatRate) // shippingCostCents is already in cents
     const vatAmount = productVat + shippingVat
 
-    const totalAmount = subtotal + shippingCost + vatAmount
+    // Total calculation - all amounts now in cents
+    const totalAmount = subtotal + shippingCostCents + vatAmount
 
-    console.log('📊 Checkout calculations:', {
-      subtotal,
-      shippingCost,
+    console.log('📊 Checkout calculations (all in cents):', {
+      subtotal: subtotal,
+      shippingCostCents: shippingCostCents,
       vatAmount,
       totalAmount,
       vatRate,
-      country: formData.shipping.country
+      country: formData.shipping.country,
+      note: 'All amounts are in cents for backend compatibility - FIXED: no double conversion'
     })
 
     // Transform data to match orderSchema format
@@ -475,9 +479,9 @@ export default function CheckoutForm({
         quantity: item.quantity,
         unitPrice: item.price || 0 // Use consistent price field
       })),
-      subtotal,
+      subtotal: subtotal,
       vatAmount,
-      shippingCost,
+      shippingCost: shippingCostCents,
       totalAmount,
       paymentMethod: formData.payment.method,
       shipping_option: selectedShippingOption && selectedShippingDetails ? {
@@ -495,7 +499,7 @@ export default function CheckoutForm({
     }
 
     // 🔍 DEBUG: Log complete submission payload
-    console.log('🚀 Frontend - Complete submission data:', {
+    console.log('🚀 Frontend - Complete submission data (all amounts in cents):', {
       totals: {
         subtotal: submissionData.subtotal,
         vatAmount: submissionData.vatAmount,
@@ -511,7 +515,8 @@ export default function CheckoutForm({
         quantity: item.quantity,
         calculatedTotal: item.quantity * item.price
       })),
-      shippingOption: submissionData.shipping_option
+      shippingOption: submissionData.shipping_option,
+      note: 'All monetary amounts are now in cents for backend compatibility'
     })
 
     try {
