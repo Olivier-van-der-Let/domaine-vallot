@@ -35,7 +35,10 @@ export function LoginForm({
   const t = useTranslations('Auth')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signIn, loading: authLoading } = useAuth()
+  // Fix: Use signingIn instead of loading for auth operations
+  // signingIn tracks the actual sign-in process state
+  // loading is for initial auth state setup and remains true during app initialization
+  const { signIn, signingIn } = useAuth()
   const [authError, setAuthError] = useState<string | null>(null)
 
   const [showPassword, setShowPassword] = useState(false)
@@ -199,12 +202,14 @@ export function LoginForm({
           )}
         </div>
 
-        {/* Submit button */}
+        {/* Submit button - Fix: Use signingIn for auth loading state */}
+        {/* signingIn is cleared in finally block of AuthProvider.signIn() */}
+        {/* isSubmitting is react-hook-form state for form validation */}
         <Button
           type="submit"
           fullWidth
-          loading={isSubmitting}
-          disabled={isSubmitting}
+          loading={signingIn || isSubmitting}
+          disabled={signingIn || isSubmitting}
         >
           <LogIn className="w-4 h-4 mr-2" />
           {t('signIn')}
