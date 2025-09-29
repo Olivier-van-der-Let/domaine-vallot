@@ -208,6 +208,20 @@ export async function POST(request: NextRequest) {
       vat_rate_percentage: vatCalculation.vat_rate * 100
     })
 
+
+    // Generate shipping_method from shipping_option for database requirement
+    let shippingMethod = 'Standard shipping' // Default fallback
+    if (orderData.shipping_option && orderData.shipping_option.carrier_name) {
+      const carrier = orderData.shipping_option.carrier_name
+      const service = orderData.shipping_option.option_name || orderData.shipping_option.service || 'standard'
+      shippingMethod = `${carrier} - ${service}`
+    }
+
+    console.log('🚚 Shipping method generated:', {
+      shipping_option: orderData.shipping_option,
+      shipping_method: shippingMethod
+    })
+
     // Create order in database
     const order = await createOrder({
       customer_id: user.id,
@@ -223,6 +237,7 @@ export async function POST(request: NextRequest) {
       shipping_cost: shippingCost / 100, // Convert from cents to euros
       total_amount: totalAmount / 100, // Convert from cents to euros
       payment_method: orderData.paymentMethod,
+      shipping_method: shippingMethod, // Add required shipping_method field
       status: 'pending'
     })
 
