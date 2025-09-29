@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateWineShipping } from '@/lib/sendcloud/client'
 import { shippingRateSchema, validateSchema } from '@/lib/validators/schemas'
 import { createHash } from 'crypto'
 
@@ -162,50 +161,12 @@ export async function POST(request: NextRequest) {
     // Calculate total bottles
     const totalBottles = items.reduce((sum, item) => sum + item.quantity, 0)
 
-    console.log(`🚚 [${requestId}] Calculating shipping rates for ${totalBottles} bottles to ${destination.country}`)
+    console.log(`🚚 [${requestId}] Calculating fallback shipping rates for ${totalBottles} bottles to ${destination.country}`)
 
-    const shippingRates = await calculateWineShipping(
-      {
-        name: 'Customer',
-        address: destination.city,
-        city: destination.city,
-        postal_code: destination.postalCode,
-        country: destination.country
-      },
-      totalBottles,
-      totalValue
-    )
+    // Calculate fallback shipping rates based on destination and package weight
+    const formattedRates = calculateFallbackShipping(destination, totalBottles, totalValue)
 
-    console.log(`✅ [${requestId}] Received ${shippingRates.length} shipping rates`)
-
-    const formattedRates = shippingRates.map(rate => {
-      // Ensure complete characteristics structure for shipping rates
-      const characteristics = rate.shipping_method.characteristics || {}
-      const carrierCode = rate.shipping_method.carrier || 'unknown'
-
-      return {
-        id: rate.shipping_method.id,
-        name: rate.shipping_method.name,
-        carrier: carrierCode,
-        price: rate.price,
-        price_display: (rate.price / 100).toFixed(2),
-        currency: rate.currency,
-        delivery_time: rate.delivery_time,
-        service_point_required: rate.service_point_required,
-        characteristics: {
-          id: rate.shipping_method.id || `${carrierCode}-${rate.shipping_method.name}`,
-          name: rate.shipping_method.name,
-          carrier: carrierCode,
-          service_code: rate.shipping_method.id?.toString() || carrierCode,
-          delivery_type: rate.service_point_required ? 'service_point' : 'home_delivery',
-          is_tracked: characteristics.is_tracked ?? true, // Default to true for wine shipping
-          requires_signature: characteristics.requires_signature ?? false,
-          is_express: characteristics.is_express ?? false,
-          insurance: 0,
-          restrictions: ['age_verification_required']
-        }
-      }
-    })
+    console.log(`✅ [${requestId}] Generated ${formattedRates.length} fallback shipping rates`)
 
     // Performance metrics
     const processingTime = Date.now() - startTime
@@ -280,6 +241,126 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Calculate fallback shipping rates when Sendcloud is unavailable
+ */
+function calculateFallbackShipping(
+  destination: { country: string; postalCode: string; city: string },
+  totalBottles: number,
+  totalValue: number
+) {
+  const weight = totalBottles * 750 + 200 // grams
+  const isEU = ['FR', 'DE', 'IT', 'ES', 'BE', 'NL', 'LU', 'AT', 'PT', 'IE', 'FI', 'SE', 'DK', 'PL', 'CZ', 'SK', 'HU', 'SI', 'EE', 'LV', 'LT', 'CY', 'MT', 'BG', 'RO', 'HR', 'GR'].includes(destination.country.toUpperCase())
+  const isFrance = destination.country.toUpperCase() === 'FR'
+
+  const rates = []
+
+  if (isFrance) {
+    // Domestic France shipping
+    rates.push({
+      id: 'colissimo-standard',
+      name: 'Colissimo Standard',
+      carrier: 'colissimo',
+      price: 690, // €6.90 in cents
+      price_display: '6.90',
+      currency: 'EUR',
+      delivery_time: '2-3 business days',
+      service_point_required: false,
+      characteristics: {
+        id: 'colissimo-standard',
+        name: 'Colissimo Standard',
+        carrier: 'colissimo',
+        service_code: 'colissimo-standard',
+        delivery_type: 'home_delivery',
+        is_tracked: true,
+        requires_signature: false,
+        is_express: false,
+        insurance: 0,
+        restrictions: ['age_verification_required']
+      }
+    })
+
+    if (totalValue > 5000) { // For orders over €50
+      rates.push({
+        id: 'colissimo-signed',
+        name: 'Colissimo Recommandé',
+        carrier: 'colissimo',
+        price: 890, // €8.90 in cents
+        price_display: '8.90',
+        currency: 'EUR',
+        delivery_time: '2-3 business days',
+        service_point_required: false,
+        characteristics: {
+          id: 'colissimo-signed',
+          name: 'Colissimo Recommandé',
+          carrier: 'colissimo',
+          service_code: 'colissimo-signed',
+          delivery_type: 'home_delivery',
+          is_tracked: true,
+          requires_signature: true,
+          is_express: false,
+          insurance: 500, // €5 insurance
+          restrictions: ['age_verification_required']
+        }
+      })
+    }
+  } else if (isEU) {
+    // EU shipping
+    const baseRate = weight > 2000 ? 1490 : 1190 // €14.90 or €11.90
+
+    rates.push({
+      id: 'colissimo-europe',
+      name: 'Colissimo Europe',
+      carrier: 'colissimo',
+      price: baseRate,
+      price_display: (baseRate / 100).toFixed(2),
+      currency: 'EUR',
+      delivery_time: '5-7 business days',
+      service_point_required: false,
+      characteristics: {
+        id: 'colissimo-europe',
+        name: 'Colissimo Europe',
+        carrier: 'colissimo',
+        service_code: 'colissimo-europe',
+        delivery_type: 'home_delivery',
+        is_tracked: true,
+        requires_signature: false,
+        is_express: false,
+        insurance: 0,
+        restrictions: ['age_verification_required']
+      }
+    })
+  } else {
+    // International shipping
+    const baseRate = 2490 // €24.90
+
+    rates.push({
+      id: 'colissimo-international',
+      name: 'Colissimo International',
+      carrier: 'colissimo',
+      price: baseRate,
+      price_display: (baseRate / 100).toFixed(2),
+      currency: 'EUR',
+      delivery_time: '7-14 business days',
+      service_point_required: false,
+      characteristics: {
+        id: 'colissimo-international',
+        name: 'Colissimo International',
+        carrier: 'colissimo',
+        service_code: 'colissimo-international',
+        delivery_type: 'home_delivery',
+        is_tracked: true,
+        requires_signature: true,
+        is_express: false,
+        insurance: 0,
+        restrictions: ['age_verification_required', 'customs_declaration_required']
+      }
+    })
+  }
+
+  return rates
+}
+
 // Health check endpoint
 export async function GET() {
   try {
@@ -292,7 +373,8 @@ export async function GET() {
 
     return NextResponse.json({
       status: 'healthy',
-      service: 'shipping-rates-api',
+      service: 'shipping-rates-api-fallback',
+      mode: 'fallback_shipping_only',
       timestamp: new Date().toISOString(),
       response_time_ms: responseTime,
       rate_limit_config: {
@@ -306,7 +388,7 @@ export async function GET() {
     return NextResponse.json(
       {
         status: 'unhealthy',
-        service: 'shipping-rates-api',
+        service: 'shipping-rates-api-fallback',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       },

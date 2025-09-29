@@ -3,7 +3,6 @@ import { getServerUser, createOrder, updateOrder, getCartItems, removeFromCart }
 import { orderSchema, validateSchema } from '@/lib/validators/schemas'
 import { calculateVat } from '@/lib/vat/calculator'
 import { createWinePayment } from '@/lib/mollie/client'
-import { calculateWineShipping, getSendcloudClient } from '@/lib/sendcloud/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -327,80 +326,7 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
-    // Create order in Sendcloud after successful payment initiation
-    let sendcloudOrderId = null
-    try {
-      const sendcloudClient = getSendcloudClient()
-
-      if (sendcloudClient.hasValidCredentials()) {
-        console.log(`🚀 [${order.id}] Creating Sendcloud order`)
-
-        const sendcloudOrder = await sendcloudClient.createOrder({
-          order_id: order.id,
-          order_number: order.id.substring(0, 8).toUpperCase(),
-          customer_email: orderData.customerEmail,
-          customer_name: `${orderData.customerFirstName} ${orderData.customerLastName}`,
-          shipping_address: {
-            name: `${orderData.shippingAddress.firstName} ${orderData.shippingAddress.lastName}`,
-            company: orderData.shippingAddress.company || undefined,
-            address: orderData.shippingAddress.address,
-            address_2: orderData.shippingAddress.address2 || undefined,
-            house_number: orderData.shippingAddress.houseNumber || undefined,
-            city: orderData.shippingAddress.city,
-            postal_code: orderData.shippingAddress.postalCode,
-            country: orderData.shippingAddress.country,
-            telephone: orderData.shippingAddress.phone || undefined,
-            email: orderData.customerEmail
-          },
-          billing_address: {
-            name: `${orderData.billingAddress.firstName} ${orderData.billingAddress.lastName}`,
-            company: orderData.billingAddress.company || undefined,
-            address: orderData.billingAddress.address,
-            address_2: orderData.billingAddress.address2 || undefined,
-            house_number: orderData.billingAddress.houseNumber || undefined,
-            city: orderData.billingAddress.city,
-            postal_code: orderData.billingAddress.postalCode,
-            country: orderData.billingAddress.country,
-            telephone: orderData.billingAddress.phone || undefined,
-            email: orderData.customerEmail
-          },
-          items: orderItems.map(item => {
-            const product = cartItems.find(ci => ci.product_id === item.product_id)?.wine_products
-            return {
-              name: product?.name || `Product ${item.product_id}`,
-              quantity: item.quantity,
-              unit_price: Math.round(item.unit_price * 100) // Convert euros to cents
-            }
-          }),
-          total_amount: totalAmount, // Already in cents
-          currency: 'EUR'
-        })
-
-        sendcloudOrderId = sendcloudOrder.id
-        console.log(`✅ [${order.id}] Sendcloud order created:`, sendcloudOrderId)
-
-        // Update order record with Sendcloud order ID
-        try {
-          await updateOrder(order.id, {
-            sendcloud_order_id: sendcloudOrderId,
-            sendcloud_integration_id: sendcloudClient.getIntegrationId(),
-            sendcloud_status: 'processing_awaiting_shipment'
-          })
-          console.log(`💾 [${order.id}] Order updated with Sendcloud data`)
-        } catch (updateError) {
-          console.error(`❌ [${order.id}] Failed to update order with Sendcloud data:`, updateError)
-          // Don't fail the order process for this
-        }
-
-      } else {
-        console.warn(`⚠️ [${order.id}] Sendcloud credentials not available, skipping order creation`)
-      }
-    } catch (sendcloudError) {
-      console.error(`❌ [${order.id}] Sendcloud order creation failed:`, sendcloudError)
-      // Don't fail the entire order process for Sendcloud issues
-      // The order was successfully created and payment initiated
-      // Sendcloud order creation can be retried later or handled manually
-    }
+    console.log(`✅ [${order.id}] Order created successfully, payment initiated`)
 
     // Clear cart after successful order creation
     try {
@@ -476,10 +402,10 @@ export async function POST(request: NextRequest) {
 
       shipping: {
         method: shippingMethod,
-        sendcloud_order_id: sendcloudOrderId,
-        sendcloud_status: sendcloudOrderId ? 'processing_awaiting_shipment' : 'not_created',
         carrier: orderData.shipping_option?.carrier_name || null,
-        service: orderData.shipping_option?.option_name || null
+        service: orderData.shipping_option?.option_name || null,
+        status: 'pending_manual_processing',
+        note: 'Shipping labels must be generated manually'
       },
 
       next_steps: [

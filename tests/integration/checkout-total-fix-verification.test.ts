@@ -24,8 +24,8 @@ describe('Checkout Total Fix - Integration Verification', () => {
       const mockShippingOption = {
         code: 'standard',
         name: 'Standard Delivery',
-        carrier_code: 'sendcloud',
-        carrier_name: 'Sendcloud',
+        carrier_code: 'colissimo',
+        carrier_name: 'Colissimo',
         price: 1200,
         currency: 'EUR',
         delivery_time: '2-3 business days',

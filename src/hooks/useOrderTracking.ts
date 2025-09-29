@@ -15,16 +15,7 @@ export interface OrderStatus {
   total_amount: number
   shipping_address: any
   notes?: string[]
-  sendcloud?: {
-    order_id?: string
-    parcel_id?: number
-    tracking_number?: string
-    tracking_url?: string
-    label_url?: string
-    status?: string
-    status_message?: string
-    carrier?: string
-  }
+  // Sendcloud integration removed - tracking now handled manually
   shipping?: {
     shipped_at?: string
     delivered_at?: string

@@ -3,7 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2025-09-16
 
 ## Active Technologies
-- JavaScript/TypeScript with Next.js 14+ + Next.js, Tailwind CSS, Liftkit Tailwind, Supabase, Mollie, Sendcloud, Resend (001-build-a-website)
+- JavaScript/TypeScript with Next.js 14+ + Next.js, Tailwind CSS, Liftkit Tailwind, Supabase, Mollie, Resend (001-build-a-website)
 - Supabase (PostgreSQL + Auth + Storage) (001-build-a-website)
 
 ## Project Structure
@@ -23,7 +23,6 @@ src/
 ├── lib/                 # Utility libraries
 │   ├── supabase/        # Supabase client and types
 │   ├── mollie/          # Mollie payment integration
-│   ├── sendcloud/       # Sendcloud shipping integration
 │   ├── vat/             # VAT calculation utilities
 │   └── validators/      # Form and data validation
 ├── hooks/               # Custom React hooks
@@ -50,7 +49,8 @@ JavaScript/TypeScript: Follow Next.js and React best practices
 - Follow Next.js App Router patterns
 
 ## Recent Changes
-- 001-build-a-website: Added JavaScript/TypeScript with Next.js 14+ + Next.js, Tailwind CSS, Liftkit Tailwind, Supabase, Mollie, Sendcloud, Resend
+- 001-build-a-website: Added JavaScript/TypeScript with Next.js 14+ + Next.js, Tailwind CSS, Liftkit Tailwind, Supabase, Mollie, Resend
+- 2025-09-29: Removed Sendcloud integration - shipping labels now require manual processing
 
 ## E-Commerce Specific Guidelines
 - Always validate age verification for wine purchases
@@ -64,7 +64,7 @@ JavaScript/TypeScript: Follow Next.js and React best practices
 ## Integration Notes
 - **Mollie**: Use webhook validation for payment status updates
 - **Supabase**: Implement Row Level Security (RLS) for data protection
-- **Sendcloud**: Cache shipping rates to reduce API calls
+- **Shipping**: Manual label generation required - removed Sendcloud integration
 - **Meta/Google**: Sync product catalogs automatically on updates
 - **Resend**: Use for transactional emails with proper templates
 

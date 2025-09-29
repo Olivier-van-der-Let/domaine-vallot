@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import CarrierSelector from './CarrierSelector'
-import AddressAutocomplete, { AddressData } from '@/components/ui/AddressAutocomplete'
-import { CarrierOption, SelectedShippingOption, CarrierSelectionResponse, ShippingOptionDetails } from '@/types'
+import React, { useEffect, useMemo, useState } from 'react'
+import { CheckoutStepKey, CheckoutShippingOption } from '@/types/checkout'
+import { SelectedShippingOption } from '@/types'
 
 interface CheckoutFormProps {
   cart: any
@@ -15,10 +14,160 @@ interface CheckoutFormProps {
   onShippingOptionChange?: (option: SelectedShippingOption | null) => void
 }
 
-interface FormErrors {
+interface FieldErrors {
   [key: string]: string
 }
 
+const STEP_SEQUENCE: CheckoutStepKey[] = ['address', 'shipping', 'payment']
+
+const classNames = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(' ')
+
+const getVatRate = (countryCode: string): number => {
+  const rates: Record<string, number> = {
+    AT: 0.20,
+    BE: 0.21,
+    BG: 0.20,
+    HR: 0.25,
+    CY: 0.19,
+    CZ: 0.21,
+    DK: 0.25,
+    EE: 0.20,
+    FI: 0.24,
+    FR: 0.20,
+    DE: 0.19,
+    GR: 0.24,
+    HU: 0.27,
+    IE: 0.23,
+    IT: 0.22,
+    LV: 0.21,
+    LT: 0.21,
+    LU: 0.17,
+    MT: 0.18,
+    NL: 0.21,
+    PL: 0.23,
+    PT: 0.23,
+    RO: 0.19,
+    SK: 0.20,
+    SI: 0.22,
+    ES: 0.21,
+    SE: 0.25
+  }
+  if (!countryCode) {
+    return 0.20
+  }
+  return rates[countryCode.toUpperCase()] ?? 0.20
+}
+
+const normalizeItemPrice = (item: any): number => {
+  if (typeof item?.price === 'number') {
+    return item.price
+  }
+  if (typeof item?.unitPrice === 'number') {
+    return item.unitPrice
+  }
+  if (typeof item?.unit_price === 'number') {
+    const value = item.unit_price
+    return value > 1000 ? value / 100 : value
+  }
+  if (typeof item?.price_eur === 'number') {
+    return item.price_eur
+  }
+  if (typeof item?.priceEuro === 'number') {
+    return item.priceEuro
+  }
+  return 0
+}
+
+const calculateTotals = (cart: any, shippingPriceCents: number, country: string) => {
+  const items = Array.isArray(cart?.items) ? cart.items : []
+  const subtotal = items.reduce((sum: number, item: any) => {
+    const priceEuros = normalizeItemPrice(item)
+    const priceCents = Math.round((priceEuros || 0) * 100)
+    const quantity = typeof item?.quantity === 'number' ? item.quantity : 0
+    return sum + quantity * priceCents
+  }, 0)
+
+  const vatRate = getVatRate(country)
+  const vatAmount = Math.round(subtotal * vatRate) + Math.round(shippingPriceCents * vatRate)
+  const totalAmount = subtotal + shippingPriceCents + vatAmount
+
+  return { subtotal, vatAmount, totalAmount }
+}
+
+const createShippingOptions = (locale: string): CheckoutShippingOption[] => {
+  const isFrench = locale === 'fr'
+  return [
+    {
+      id: 'pickup',
+      type: 'pickup',
+      label: isFrench ? 'Retrait au domaine' : 'Estate pick-up',
+      description: isFrench
+        ? 'Recuperez votre commande directement au caveau du Domaine Vallot.'
+        : 'Collect your wines directly from the Domaine Vallot tasting room.',
+      helpText: isFrench
+        ? 'Notre equipe prend contact pour convenir d\'un creneau de retrait.'
+        : 'Our team will reach out to confirm a convenient collection slot.',
+      badge: isFrench ? 'Gratuit' : 'Free',
+      estimatedDelivery: isFrench ? 'Disponible sous 2 jours ouvres' : 'Ready within 2 business days',
+      priceCents: 0,
+      option: {
+        carrier_code: 'pickup',
+        carrier_name: isFrench ? 'Retrait sur place' : 'On-site pick-up',
+        option_code: 'pickup_estate',
+        option_name: isFrench ? 'Retrait au caveau' : 'Collect at the estate',
+        price: 0,
+        currency: 'EUR',
+        delivery_time: isFrench ? 'Retrait sur rendez-vous' : 'Collection by appointment',
+        service_point_required: false
+      },
+      characteristics: {
+        is_tracked: false,
+        requires_signature: false,
+        is_express: false,
+        insurance: 0,
+        last_mile: 'store_pickup'
+      }
+    },
+    {
+      id: 'delivery',
+      type: 'delivery',
+      label: isFrench ? 'Livraison a domicile' : 'Home delivery',
+      description: isFrench
+        ? 'Expedition securisee avec suivi partout en France metropolitaine.'
+        : 'Tracked delivery to your doorstep across metropolitan France.',
+      helpText: isFrench
+        ? 'Colis proteges, prise de rendez-vous possible avec le transporteur.'
+        : 'Protective packaging and optional delivery scheduling with our carrier.',
+      badge: isFrench ? 'Populaire' : 'Popular choice',
+      estimatedDelivery: isFrench ? '2 a 5 jours ouvres' : '2-5 business days',
+      priceCents: 1500,
+      option: {
+        carrier_code: 'standard_delivery',
+        carrier_name: isFrench ? 'Transporteur partenaire' : 'Logistics partner',
+        option_code: 'standard_home',
+        option_name: isFrench ? 'Livraison standard' : 'Standard delivery',
+        price: 1500,
+        currency: 'EUR',
+        delivery_time: isFrench ? '2 a 5 jours ouvres' : '2-5 business days',
+        service_point_required: false
+      },
+      characteristics: {
+        is_tracked: true,
+        requires_signature: true,
+        is_express: false,
+        insurance: 0,
+        last_mile: 'home_delivery'
+      }
+    }
+  ]
+}
+
+const formatCents = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value / 100)
 export default function CheckoutForm({
   cart,
   user,
@@ -28,865 +177,686 @@ export default function CheckoutForm({
   updateShippingCost,
   onShippingOptionChange
 }: CheckoutFormProps) {
-  const [formData, setFormData] = useState({
-    customer: {
-      email: user?.email || '',
-      firstName: user?.firstName || '',
-      lastName: user?.lastName || '',
-      phone: user?.phone || ''
-    },
-    shipping: {
-      address: '',
-      city: '',
-      postalCode: '',
-      country: 'FR'
-    },
-    billing: {
-      sameAsShipping: true,
-      address: '',
-      city: '',
-      postalCode: '',
-      country: 'FR'
-    },
-    payment: {
-      method: 'mollie'
-    }
-  })
-  const [errors, setErrors] = useState<FormErrors>({})
-  const [touched, setTouched] = useState<{[key: string]: boolean}>({})
-  const [shippingRates, setShippingRates] = useState<any[]>([])
-  const [selectedShipping, setSelectedShipping] = useState<string>('')
-  const [loadingShipping, setLoadingShipping] = useState(false)
-  // New carrier selection state
-  const [carriers, setCarriers] = useState<CarrierOption[]>([])
-  const [selectedShippingOption, setSelectedShippingOption] = useState<SelectedShippingOption | null>(null)
-  const [selectedShippingDetails, setSelectedShippingDetails] = useState<ShippingOptionDetails | null>(null)
-  const [loadingCarriers, setLoadingCarriers] = useState(false)
-  // Address autocomplete state
-  const [useAutocomplete, setUseAutocomplete] = useState(true)
+  const shippingOptions = useMemo(() => createShippingOptions(locale), [locale])
 
-  // Validation functions
-  const validateEmail = (email: string): boolean => {
+  const [stepIndex, setStepIndex] = useState(0)
+  const [contact, setContact] = useState({
+    email: user?.email ?? '',
+    firstName: user?.firstName ?? '',
+    lastName: user?.lastName ?? '',
+    phone: user?.phone ?? ''
+  })
+  const [shippingAddress, setShippingAddress] = useState({
+    company: '',
+    addressLine1: '',
+    addressLine2: '',
+    postalCode: '',
+    city: '',
+    country: 'FR',
+    notes: ''
+  })
+  const [billingSameAsShipping] = useState(true)
+  const [selectedShippingId, setSelectedShippingId] = useState<string | null>(null)
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const [generalError, setGeneralError] = useState<string | null>(null)
+  const [confirmedOfAge, setConfirmedOfAge] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+
+  const currentStep = STEP_SEQUENCE[stepIndex]
+  const stepLabels = useMemo(() => ({
+    address: locale === 'fr' ? 'Vos coordonnees' : 'Your details',
+    shipping: locale === 'fr' ? 'Options de livraison' : 'Shipping options',
+    payment: locale === 'fr' ? 'Paiement' : 'Payment'
+  }), [locale])
+
+  const selectedShipping = useMemo(() => {
+    if (!selectedShippingId) return null
+    return shippingOptions.find(option => option.id === selectedShippingId) ?? null
+  }, [selectedShippingId, shippingOptions])
+
+  useEffect(() => {
+    if (selectedShipping) {
+      updateShippingCost?.(selectedShipping.option.price)
+      onShippingOptionChange?.(selectedShipping.option)
+    }
+  }, [selectedShipping, updateShippingCost, onShippingOptionChange])
+
+  const clearFieldError = (field: string) => {
+    if (!errors[field]) return
+    setErrors(prev => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  const handleContactChange = (field: keyof typeof contact, value: string) => {
+    setContact(prev => ({ ...prev, [field]: value }))
+    clearFieldError(`contact.${field}`)
+  }
+
+  const handleAddressChange = (field: keyof typeof shippingAddress, value: string) => {
+    setShippingAddress(prev => ({ ...prev, [field]: value }))
+    clearFieldError(`shipping.${field}`)
+  }
+
+  const validateEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return regex.test(email)
   }
 
-  const validateField = (name: string, value: string) => {
-    let error = ''
-
-    switch (name) {
-      case 'customer.email':
-        if (!value) error = 'Email is required'
-        else if (!validateEmail(value)) error = 'Invalid email format'
-        break
-      case 'customer.firstName':
-      case 'customer.lastName':
-        if (!value) error = 'This field is required'
-        else if (value.length < 2) error = 'Must be at least 2 characters'
-        break
-      case 'shipping.address':
-      case 'shipping.city':
-        if (!value) error = 'This field is required'
-        break
-      case 'shipping.postalCode':
-        if (!value) error = 'Postal code is required'
-        else if (formData.shipping.country === 'FR' && !/^\d{5}$/.test(value)) {
-          error = 'Invalid French postal code'
-        }
-        break
+  const validateAddressStep = () => {
+    const nextErrors: FieldErrors = {}
+    if (!contact.email) {
+      nextErrors['contact.email'] = locale === 'fr' ? 'Email requis' : 'Email is required'
+    } else if (!validateEmail(contact.email)) {
+      nextErrors['contact.email'] = locale === 'fr' ? 'Format d\'email invalide' : 'Invalid email format'
     }
 
-    setErrors(prev => ({ ...prev, [name]: error }))
-    return !error
+    if (!contact.firstName) {
+      nextErrors['contact.firstName'] = locale === 'fr' ? 'Prenom requis' : 'First name is required'
+    }
+
+    if (!contact.lastName) {
+      nextErrors['contact.lastName'] = locale === 'fr' ? 'Nom requis' : 'Last name is required'
+    }
+
+    if (!shippingAddress.addressLine1) {
+      nextErrors['shipping.addressLine1'] = locale === 'fr' ? 'Adresse requise' : 'Address is required'
+    }
+
+    if (!shippingAddress.postalCode) {
+      nextErrors['shipping.postalCode'] = locale === 'fr' ? 'Code postal requis' : 'Postal code is required'
+    }
+
+    if (!shippingAddress.city) {
+      nextErrors['shipping.city'] = locale === 'fr' ? 'Ville requise' : 'City is required'
+    }
+
+    if (!shippingAddress.country) {
+      nextErrors['shipping.country'] = locale === 'fr' ? 'Pays requis' : 'Country is required'
+    }
+
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
   }
 
-  const handleFieldChange = (section: string, field: string, value: string) => {
-    const fieldName = `${section}.${field}`
-
-    setFormData(prev => ({
-      ...prev,
-      [section]: { ...prev[section as keyof typeof prev], [field]: value }
-    }))
-
-    if (touched[fieldName]) {
-      validateField(fieldName, value)
-    }
-  }
-
-  const handleFieldBlur = (section: string, field: string) => {
-    const fieldName = `${section}.${field}`
-    setTouched(prev => ({ ...prev, [fieldName]: true }))
-    validateField(fieldName, (formData as any)[section][field])
-  }
-
-  // Calculate shipping options when address changes
-  useEffect(() => {
-    if (formData.shipping.country && formData.shipping.postalCode?.length >= 4) {
-      calculateShippingOptions()
-    }
-  }, [formData.shipping.country, formData.shipping.postalCode, formData.shipping.city])
-
-  // Pre-populate user data when user changes
-  useEffect(() => {
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        customer: {
-          email: user.email || prev.customer.email,
-          firstName: user.firstName || prev.customer.firstName,
-          lastName: user.lastName || prev.customer.lastName,
-          phone: user.phone || prev.customer.phone
-        }
-      }))
-    }
-  }, [user])
-
-  const calculateShippingRates = async () => {
-    if (!cart?.total || cart.items.length === 0) return
-
-    setLoadingShipping(true)
-    try {
-      const response = await fetch('/api/shipping/rates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination: {
-            country: formData.shipping.country,
-            postalCode: formData.shipping.postalCode,
-            city: formData.shipping.city
-          },
-          items: cart.items.map((item: any) => ({
-            quantity: item.quantity,
-            weight: item.weight || 750 // Default 750g per bottle
-          })),
-          totalValue: cart.total
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setShippingRates(result.rates || [])
-        if (result.rates?.length > 0 && !selectedShipping) {
-          setSelectedShipping(result.rates[0].id)
-        }
+  const goToNextStep = () => {
+    setGeneralError(null)
+    if (currentStep === 'address') {
+      if (validateAddressStep()) {
+        setStepIndex(1)
       }
-    } catch (error) {
-      console.error('Failed to calculate shipping:', error)
-    } finally {
-      setLoadingShipping(false)
-    }
-  }
-
-  const calculateShippingOptions = async () => {
-    if (!cart?.total || cart.items.length === 0) return
-
-    setLoadingCarriers(true)
-    try {
-      const response = await fetch('/api/shipping/options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination: {
-            country: formData.shipping.country,
-            postalCode: formData.shipping.postalCode,
-            city: formData.shipping.city
-          },
-          items: cart.items.map((item: any) => ({
-            productId: item.productId || item.id,
-            quantity: item.quantity,
-            weight: item.weight || 750 // Default 750g per bottle
-          })),
-          totalValue: cart.total
-        })
-      })
-
-      if (response.ok) {
-        const result: CarrierSelectionResponse = await response.json()
-        setCarriers(result.carriers || [])
-
-        // Auto-select the first available option if none selected
-        if (result.carriers?.length > 0 && !selectedShippingOption) {
-          const firstCarrier = result.carriers[0]
-          if (firstCarrier.shipping_options.length > 0) {
-            const firstOption = firstCarrier.shipping_options[0]
-            handleShippingOptionSelect({
-              carrier_code: firstCarrier.code,
-              carrier_name: firstCarrier.name,
-              option_code: firstOption.code,
-              option_name: firstOption.name,
-              price: firstOption.price,
-              currency: firstOption.currency,
-              delivery_time: firstOption.delivery_time,
-              service_point_required: firstOption.service_point_required
-            }, firstOption)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to calculate shipping options:', error)
-    } finally {
-      setLoadingCarriers(false)
-    }
-  }
-
-  const handleShippingOptionSelect = (option: SelectedShippingOption, details?: ShippingOptionDetails) => {
-    setSelectedShippingOption(option)
-    setSelectedShippingDetails(details || null)
-    // Update legacy selectedShipping for backward compatibility
-    setSelectedShipping(option.option_code)
-
-    // Update cart shipping cost through the passed function
-    if (updateShippingCost) {
-      updateShippingCost(option.price)
-    }
-
-    // Notify parent component about the shipping option change
-    if (onShippingOptionChange) {
-      onShippingOptionChange(option)
-    }
-  }
-
-  const handleAddressSelect = (addressData: AddressData) => {
-    // Update form data with selected address
-    setFormData(prev => ({
-      ...prev,
-      shipping: {
-        ...prev.shipping,
-        address: addressData.houseNumber
-          ? `${addressData.houseNumber} ${addressData.street}`
-          : addressData.street,
-        city: addressData.city,
-        postalCode: addressData.postalCode,
-        country: addressData.countryCode || addressData.country
-      }
-    }))
-
-    // Clear any previous address-related errors
-    setErrors(prev => {
-      const newErrors = { ...prev }
-      delete newErrors['shipping.address']
-      delete newErrors['shipping.city']
-      delete newErrors['shipping.postalCode']
-      return newErrors
-    })
-
-    // Mark address fields as touched since they were auto-filled
-    setTouched(prev => ({
-      ...prev,
-      'shipping.address': true,
-      'shipping.city': true,
-      'shipping.postalCode': true
-    }))
-  }
-
-  const validateForm = (): boolean => {
-    const requiredFields = [
-      'customer.email', 'customer.firstName', 'customer.lastName',
-      'shipping.address', 'shipping.city', 'shipping.postalCode'
-    ]
-
-    let isValid = true
-    const newErrors: FormErrors = {}
-
-    requiredFields.forEach(fieldName => {
-      const [section, field] = fieldName.split('.')
-      const value = (formData as any)[section][field]
-      if (!validateField(fieldName, value)) {
-        isValid = false
-      }
-    })
-
-    return isValid
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      // Mark all fields as touched to show validation errors
-      const allFields = [
-        'customer.email', 'customer.firstName', 'customer.lastName',
-        'shipping.address', 'shipping.city', 'shipping.postalCode'
-      ]
-      const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {})
-      setTouched(newTouched)
-
-      // Show error message
-      setErrors(prev => ({
-        ...prev,
-        _general: locale === 'fr'
-          ? 'Veuillez corriger les erreurs ci-dessus avant de continuer'
-          : 'Please fix the errors above before continuing'
-      }))
       return
     }
 
-    // Validate shipping option selection
-    if (!selectedShippingOption) {
-      setErrors(prev => ({
-        ...prev,
-        _shipping: locale === 'fr'
-          ? 'Veuillez sélectionner une méthode de livraison'
-          : 'Please select a shipping method'
-      }))
+    if (currentStep === 'shipping') {
+      if (!selectedShipping) {
+        setGeneralError(locale === 'fr' ? 'Veuillez selectionner un mode de livraison.' : 'Please choose a shipping option.')
+        setErrors(prev => ({ ...prev, shipping: locale === 'fr' ? 'Selection requise' : 'Selection required' }))
+        return
+      }
+      setErrors({})
+      setStepIndex(2)
+      return
+    }
+  }
+
+  const goToPreviousStep = () => {
+    setGeneralError(null)
+    setStepIndex(Math.max(0, stepIndex - 1))
+  }
+  const handlePlaceOrder = async () => {
+    if (!selectedShipping) {
+      setGeneralError(locale === 'fr' ? 'Selectionnez une option de livraison.' : 'Select a shipping option to continue.')
       return
     }
 
-    // Validate cart has items
+    if (!acceptedTerms) {
+      setErrors(prev => ({ ...prev, terms: locale === 'fr' ? 'Vous devez accepter les conditions' : 'Please accept the terms and conditions' }))
+      setGeneralError(locale === 'fr' ? 'Veuillez accepter les conditions generales pour continuer.' : 'Accept the terms and conditions to continue.')
+      return
+    }
+
+    if (!confirmedOfAge) {
+      setErrors(prev => ({ ...prev, age: locale === 'fr' ? 'Vous devez confirmer avoir 18 ans ou plus' : 'You must confirm you are at least 18 years old' }))
+      setGeneralError(locale === 'fr' ? 'Confirmez etre majeur pour continuer.' : 'Please confirm you are of legal drinking age.')
+      return
+    }
+
     if (!cart?.items || cart.items.length === 0) {
-      setErrors(prev => ({
-        ...prev,
-        _general: locale === 'fr'
-          ? 'Votre panier est vide'
-          : 'Your cart is empty'
-      }))
+      setGeneralError(locale === 'fr' ? 'Votre panier est vide.' : 'Your cart is empty.')
       return
     }
 
-    // Validate cart items have valid pricing and quantities
-    const invalidItems = cart.items.filter((item: any) => {
-      const hasValidPrice = item.price != null && typeof item.price === 'number'
-      const hasValidQuantity = item.quantity > 0
+    const totals = calculateTotals(cart, selectedShipping.option.price, shippingAddress.country)
 
-      // Debug logging for invalid items
-      if (!hasValidPrice || !hasValidQuantity) {
-        console.warn('🛒 Invalid cart item detected:', {
-          itemId: item.id,
-          productName: item.name || 'Unknown',
-          price: item.price,
-          priceType: typeof item.price,
-          quantity: item.quantity,
-          hasValidPrice,
-          hasValidQuantity
-        })
-      }
-
-      return !hasValidPrice || !hasValidQuantity
-    })
-
-    if (invalidItems.length > 0) {
-      // Create detailed error message
-      const itemNames = invalidItems.map(item => item.name || 'Unknown item').join(', ')
-      const errorMessage = locale === 'fr'
-        ? `Articles avec des prix invalides: ${itemNames}`
-        : `Items with invalid pricing: ${itemNames}`
-
-      setErrors(prev => ({
-        ...prev,
-        _general: errorMessage
-      }))
-
-      console.error('🛒 Cart validation failed:', {
-        invalidItemCount: invalidItems.length,
-        invalidItems: invalidItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        }))
-      })
-
-      return
-    }
-
-    // Clear previous errors
-    setErrors({})
-
-    // Calculate order totals - convert cart item prices to cents
-    const subtotal = cart.items.reduce((sum: number, item: any) => {
-      // Cart provides prices in euros, convert to cents for calculation
-      const itemPriceEuros = item.price || 0
-      const itemPriceCents = Math.round(itemPriceEuros * 100)
-      console.log('💰 Cart item price calculation (converting to cents):', {
-        itemName: item.name,
-        quantity: item.quantity,
-        itemPriceEuros: itemPriceEuros,
-        itemPriceCents: itemPriceCents,
-        itemTotalCents: item.quantity * itemPriceCents
-      })
-      return sum + (item.quantity * itemPriceCents)
-    }, 0)
-
-    // IMPORTANT: selectedShippingOption.price is already in cents from the shipping API
-    const shippingCostCents = selectedShippingOption?.price || 0
-
-    // Calculate VAT using CENTS methodology (same as backend)
-    const getVatRate = (countryCode: string): number => {
-      const vatRates: Record<string, number> = {
-        'AT': 0.20, 'BE': 0.21, 'BG': 0.20, 'HR': 0.25, 'CY': 0.19,
-        'CZ': 0.21, 'DK': 0.25, 'EE': 0.20, 'FI': 0.24, 'FR': 0.20,
-        'DE': 0.19, 'GR': 0.24, 'HU': 0.27, 'IE': 0.23, 'IT': 0.22,
-        'LV': 0.21, 'LT': 0.21, 'LU': 0.17, 'MT': 0.18, 'NL': 0.21,
-        'PL': 0.23, 'PT': 0.23, 'RO': 0.19, 'SK': 0.20, 'SI': 0.22,
-        'ES': 0.21, 'SE': 0.25
-      }
-      return vatRates[countryCode] || 0.20 // Default to 20% for unknown countries
-    }
-
-    const vatRate = getVatRate(formData.shipping.country)
-
-    // VAT calculation in cents (matches backend calculator.ts)
-    const productVat = Math.round(subtotal * vatRate)  // subtotal is already in cents
-    const shippingVat = Math.round(shippingCostCents * vatRate) // shippingCostCents is already in cents
-    const vatAmount = productVat + shippingVat
-
-    // Total calculation - all amounts now in cents
-    const totalAmount = subtotal + shippingCostCents + vatAmount
-
-    console.log('📊 Checkout calculations (all in cents):', {
-      subtotal: subtotal,
-      shippingCostCents: shippingCostCents,
-      vatAmount,
-      totalAmount,
-      vatRate,
-      country: formData.shipping.country,
-      note: 'All amounts are in cents for backend compatibility - FIXED: no double conversion'
-    })
-
-    // Transform data to match orderSchema format
-    const submissionData = {
-      customerEmail: formData.customer.email,
-      customerFirstName: formData.customer.firstName,
-      customerLastName: formData.customer.lastName,
+    const payload = {
+      customerEmail: contact.email,
+      customerFirstName: contact.firstName,
+      customerLastName: contact.lastName,
       shippingAddress: {
-        firstName: formData.customer.firstName,
-        lastName: formData.customer.lastName,
-        address: formData.shipping.address,
-        city: formData.shipping.city,
-        postalCode: formData.shipping.postalCode,
-        country: formData.shipping.country,
-        phone: formData.customer.phone
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        address: shippingAddress.addressLine1,
+        addressLine2: shippingAddress.addressLine2,
+        city: shippingAddress.city,
+        postalCode: shippingAddress.postalCode,
+        country: shippingAddress.country,
+        company: shippingAddress.company,
+        notes: shippingAddress.notes,
+        phone: contact.phone
       },
-      billingAddress: formData.billing.sameAsShipping ? {
-        firstName: formData.customer.firstName,
-        lastName: formData.customer.lastName,
-        address: formData.shipping.address,
-        city: formData.shipping.city,
-        postalCode: formData.shipping.postalCode,
-        country: formData.shipping.country,
-        phone: formData.customer.phone
-      } : {
-        firstName: formData.customer.firstName,
-        lastName: formData.customer.lastName,
-        address: formData.billing.address,
-        city: formData.billing.city,
-        postalCode: formData.billing.postalCode,
-        country: formData.billing.country,
-        phone: formData.customer.phone
-      },
-      items: cart.items.map((item: any) => ({
-        productId: item.productId, // Use correct product ID
-        quantity: item.quantity,
-        unitPrice: item.price || 0 // Use consistent price field
-      })),
-      subtotal: subtotal,
-      vatAmount,
-      shippingCost: shippingCostCents,
-      totalAmount,
-      paymentMethod: formData.payment.method,
-      shipping_option: selectedShippingOption && selectedShippingDetails ? {
-        code: selectedShippingOption.option_code,
-        name: selectedShippingOption.option_name,
-        carrier_code: selectedShippingOption.carrier_code,
-        carrier_name: selectedShippingOption.carrier_name,
-        price: selectedShippingOption.price,
-        currency: selectedShippingOption.currency,
-        delivery_time: selectedShippingOption.delivery_time,
-        service_point_required: selectedShippingOption.service_point_required,
-        characteristics: selectedShippingDetails.characteristics
+      billingAddress: billingSameAsShipping ? {
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        address: shippingAddress.addressLine1,
+        addressLine2: shippingAddress.addressLine2,
+        city: shippingAddress.city,
+        postalCode: shippingAddress.postalCode,
+        country: shippingAddress.country,
+        company: shippingAddress.company,
+        notes: shippingAddress.notes,
+        phone: contact.phone
       } : undefined,
+      items: cart.items.map((item: any) => ({
+        productId: item.productId ?? item.product_id,
+        quantity: item.quantity,
+        unitPrice: normalizeItemPrice(item)
+      })),
+      subtotal: totals.subtotal,
+      vatAmount: totals.vatAmount,
+      shippingCost: selectedShipping.option.price,
+      totalAmount: totals.totalAmount,
+      paymentMethod: 'mollie',
+      shipping_option: {
+        ...selectedShipping.option,
+        characteristics: selectedShipping.characteristics
+      },
+      specialInstructions: shippingAddress.notes || undefined,
       locale
     }
 
-    // 🔍 DEBUG: Log complete submission payload
-    console.log('🚀 Frontend - Complete submission data (all amounts in cents):', {
-      totals: {
-        subtotal: submissionData.subtotal,
-        vatAmount: submissionData.vatAmount,
-        shippingCost: submissionData.shippingCost,
-        totalAmount: submissionData.totalAmount
-      },
-      items: submissionData.items,
-      cartItemsUsedForCalculation: cart.items.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        calculatedTotal: item.quantity * item.price
-      })),
-      shippingOption: submissionData.shipping_option,
-      note: 'All monetary amounts are now in cents for backend compatibility'
-    })
-
-    try {
-      await onSubmit(submissionData)
-    } catch (error) {
-      setErrors(prev => ({
-        ...prev,
-        _general: error instanceof Error
-          ? error.message
-          : (locale === 'fr' ? 'Une erreur est survenue' : 'An error occurred')
-      }))
-    }
+    setGeneralError(null)
+    await onSubmit(payload)
   }
 
-  return (
-    <div className="space-y-8" data-testid="checkout-form">
-      {/* Progress Indicator */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                1
-              </div>
-              <span className="ml-2 text-sm font-medium text-blue-600">Information</span>
-            </div>
-            <div className="w-16 h-0.5 bg-gray-300"></div>
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-medium">
-                2
-              </div>
-              <span className="ml-2 text-sm font-medium text-gray-600">Payment</span>
-            </div>
+  const totalsPreview = useMemo(() => {
+    if (!selectedShipping || !cart?.items?.length) {
+      return null
+    }
+    return calculateTotals(cart, selectedShipping.option.price, shippingAddress.country)
+  }, [cart, selectedShipping, shippingAddress.country])
+  const renderAddressStep = () => (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">
+          {locale === 'fr' ? 'Coordonnees' : 'Contact'}
+        </h3>
+        <p className="text-sm text-gray-500">
+          {locale === 'fr'
+            ? 'Nous utilisons ces informations pour confirmer votre commande et organiser la livraison.'
+            : 'We use these details to confirm your order and coordinate delivery.'}
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-email">
+              {locale === 'fr' ? 'Adresse email' : 'Email'}
+            </label>
+            <input
+              id="checkout-email"
+              data-testid="customer-email"
+              type="email"
+              autoComplete="email"
+              value={contact.email}
+              onChange={event => handleContactChange('email', event.target.value)}
+              className={classNames(
+                'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                errors['contact.email'] ? 'border-red-500' : 'border-gray-300'
+              )}
+            />
+            {errors['contact.email'] && <p className="mt-2 text-sm text-red-600">{errors['contact.email']}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-firstname">
+              {locale === 'fr' ? 'Prenom' : 'First name'}
+            </label>
+            <input
+              id="checkout-firstname"
+              data-testid="customer-firstname"
+              type="text"
+              autoComplete="given-name"
+              value={contact.firstName}
+              onChange={event => handleContactChange('firstName', event.target.value)}
+              className={classNames(
+                'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                errors['contact.firstName'] ? 'border-red-500' : 'border-gray-300'
+              )}
+            />
+            {errors['contact.firstName'] && <p className="mt-2 text-sm text-red-600">{errors['contact.firstName']}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-lastname">
+              {locale === 'fr' ? 'Nom' : 'Last name'}
+            </label>
+            <input
+              id="checkout-lastname"
+              data-testid="customer-lastname"
+              type="text"
+              autoComplete="family-name"
+              value={contact.lastName}
+              onChange={event => handleContactChange('lastName', event.target.value)}
+              className={classNames(
+                'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                errors['contact.lastName'] ? 'border-red-500' : 'border-gray-300'
+              )}
+            />
+            {errors['contact.lastName'] && <p className="mt-2 text-sm text-red-600">{errors['contact.lastName']}</p>}
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-phone">
+              {locale === 'fr' ? 'Numero de telephone (optionnel)' : 'Phone number (optional)'}
+            </label>
+            <input
+              id="checkout-phone"
+              type="tel"
+              autoComplete="tel"
+              value={contact.phone}
+              onChange={event => handleContactChange('phone', event.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
           </div>
         </div>
       </div>
 
-      {/* General Error Message */}
-      {errors._general && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <p className="text-red-700 text-sm font-medium">{errors._general}</p>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">
+          {locale === 'fr' ? 'Adresse de livraison' : 'Shipping address'}
+        </h3>
+        <div className="mt-6 grid grid-cols-1 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-company">
+              {locale === 'fr' ? 'Societe (optionnel)' : 'Company (optional)'}
+            </label>
+            <input
+              id="checkout-company"
+              type="text"
+              value={shippingAddress.company}
+              onChange={event => handleAddressChange('company', event.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-address1">
+              {locale === 'fr' ? 'Adresse' : 'Address'}
+            </label>
+            <input
+              id="checkout-address1"
+              data-testid="shipping-address-line1"
+              type="text"
+              autoComplete="address-line1"
+              value={shippingAddress.addressLine1}
+              onChange={event => handleAddressChange('addressLine1', event.target.value)}
+              className={classNames(
+                'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                errors['shipping.addressLine1'] ? 'border-red-500' : 'border-gray-300'
+              )}
+            />
+            {errors['shipping.addressLine1'] && <p className="mt-2 text-sm text-red-600">{errors['shipping.addressLine1']}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-address2">
+              {locale === 'fr' ? 'Complement d\'adresse (optionnel)' : 'Address line 2 (optional)'}
+            </label>
+            <input
+              id="checkout-address2"
+              type="text"
+              autoComplete="address-line2"
+              value={shippingAddress.addressLine2}
+              onChange={event => handleAddressChange('addressLine2', event.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-postal">
+                {locale === 'fr' ? 'Code postal' : 'Postal code'}
+              </label>
+              <input
+                id="checkout-postal"
+                data-testid="shipping-postal-code"
+                type="text"
+                autoComplete="postal-code"
+                value={shippingAddress.postalCode}
+                onChange={event => handleAddressChange('postalCode', event.target.value)}
+                className={classNames(
+                  'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                  errors['shipping.postalCode'] ? 'border-red-500' : 'border-gray-300'
+                )}
+              />
+              {errors['shipping.postalCode'] && <p className="mt-2 text-sm text-red-600">{errors['shipping.postalCode']}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-city">
+                {locale === 'fr' ? 'Ville' : 'City'}
+              </label>
+              <input
+                id="checkout-city"
+                data-testid="shipping-city"
+                type="text"
+                autoComplete="address-level2"
+                value={shippingAddress.city}
+                onChange={event => handleAddressChange('city', event.target.value)}
+                className={classNames(
+                  'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                  errors['shipping.city'] ? 'border-red-500' : 'border-gray-300'
+                )}
+              />
+              {errors['shipping.city'] && <p className="mt-2 text-sm text-red-600">{errors['shipping.city']}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-country">
+                {locale === 'fr' ? 'Pays' : 'Country'}
+              </label>
+              <select
+                id="checkout-country"
+                data-testid="shipping-country"
+                value={shippingAddress.country}
+                onChange={event => handleAddressChange('country', event.target.value)}
+                className={classNames(
+                  'mt-1 block w-full rounded-md border px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900',
+                  errors['shipping.country'] ? 'border-red-500' : 'border-gray-300'
+                )}
+              >
+                <option value="FR">France</option>
+                <option value="BE">Belgique</option>
+                <option value="NL">Pays-Bas</option>
+                <option value="DE">Allemagne</option>
+                <option value="ES">Espagne</option>
+                <option value="IT">Italie</option>
+                <option value="LU">Luxembourg</option>
+                <option value="CH">Suisse</option>
+              </select>
+              {errors['shipping.country'] && <p className="mt-2 text-sm text-red-600">{errors['shipping.country']}</p>}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700" htmlFor="checkout-notes">
+              {locale === 'fr' ? 'Instructions particuliere (optionnel)' : 'Delivery notes (optional)'}
+            </label>
+            <textarea
+              id="checkout-notes"
+              value={shippingAddress.notes}
+              onChange={event => handleAddressChange('notes', event.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              rows={3}
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              {locale === 'fr'
+                ? 'Indiquez une consigne de livraison ou un code d\'acces si necessaire.'
+                : 'Include delivery notes or gate codes if the carrier needs them.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+  const renderShippingStep = () => (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-500">
+        {locale === 'fr'
+          ? 'Choisissez la solution qui vous convient : retrait gratuit ou livraison securisee.'
+          : 'Choose between complimentary pick-up or insured home delivery.'}
+      </p>
+      <div className="space-y-4">
+        {shippingOptions.map(option => {
+          const isSelected = selectedShipping?.id === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              data-testid={`shipping-option-${option.id}`}
+              onClick={() => {
+                setSelectedShippingId(option.id)
+                clearFieldError('shipping')
+                setGeneralError(null)
+              }}
+              className={classNames(
+                'w-full rounded-xl border p-6 text-left transition-all duration-200',
+                isSelected
+                  ? 'border-gray-900 bg-gray-50 shadow-sm'
+                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              )}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-lg font-semibold text-gray-900">{option.label}</h4>
+                    {option.badge && (
+                      <span className="inline-flex items-center rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white">
+                        {option.badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">{option.description}</p>
+                  {option.helpText && (
+                    <p className="mt-2 text-xs text-gray-500">{option.helpText}</p>
+                  )}
+                  {option.estimatedDelivery && (
+                    <p className="mt-3 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                      {option.estimatedDelivery}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatCents(option.option.price, locale)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {locale === 'fr' ? 'TTC, TVA incluse' : 'VAT included'}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      {errors['shipping'] && <p className="text-sm text-red-600">{errors['shipping']}</p>}
+    </div>
+  )
+  const renderPaymentStep = () => (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900">
+          {locale === 'fr' ? 'Resume de la commande' : 'Order summary'}
+        </h3>
+        <dl className="mt-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <dt className="text-gray-600">{locale === 'fr' ? 'Contact' : 'Contact'}</dt>
+            <dd className="text-gray-900">{contact.firstName} {contact.lastName}</dd>
+          </div>
+          <div className="flex justify-between text-gray-600">
+            <dt>{locale === 'fr' ? 'Adresse' : 'Address'}</dt>
+            <dd className="max-w-xs text-right text-gray-900">
+              {shippingAddress.addressLine1}
+              {shippingAddress.addressLine2 ? `, ${shippingAddress.addressLine2}` : ''}
+              <br />
+              {shippingAddress.postalCode} {shippingAddress.city}
+              <br />
+              {shippingAddress.country}
+            </dd>
+          </div>
+          {selectedShipping && (
+            <div className="flex justify-between text-gray-600">
+              <dt>{locale === 'fr' ? 'Livraison' : 'Shipping'}</dt>
+              <dd className="max-w-xs text-right text-gray-900">
+                {selectedShipping.label}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
+      {totalsPreview && (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <h4 className="text-sm font-semibold text-gray-900">
+            {locale === 'fr' ? 'Totaux estimes' : 'Estimated totals'}
+          </h4>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-gray-600">{locale === 'fr' ? 'Sous-total' : 'Subtotal'}</dt>
+              <dd className="text-gray-900">{formatCents(totalsPreview.subtotal, locale)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-gray-600">{locale === 'fr' ? 'Livraison' : 'Shipping'}</dt>
+              <dd className="text-gray-900">{formatCents(selectedShipping!.option.price, locale)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-gray-600">{locale === 'fr' ? 'TVA estimee' : 'Estimated VAT'}</dt>
+              <dd className="text-gray-900">{formatCents(totalsPreview.vatAmount, locale)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-gray-200 pt-3 text-base font-semibold text-gray-900">
+              <dt>{locale === 'fr' ? 'Total' : 'Total'}</dt>
+              <dd>{formatCents(totalsPreview.totalAmount, locale)}</dd>
+            </div>
+          </dl>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+      <div className="space-y-4">
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            data-testid="terms-checkbox"
+            checked={acceptedTerms}
+            onChange={event => {
+              setAcceptedTerms(event.target.checked)
+              clearFieldError('terms')
+            }}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+          />
+          <span className="text-gray-700">
+            {locale === 'fr'
+              ? <>J'accepte les <a href="/terms" className="text-gray-900 underline" target="_blank" rel="noreferrer">conditions generales</a> et la <a href="/privacy" className="text-gray-900 underline" target="_blank" rel="noreferrer">politique de confidentialite</a>.</>
+              : <>I agree to the <a href="/terms" className="text-gray-900 underline" target="_blank" rel="noreferrer">terms and conditions</a> and the <a href="/privacy" className="text-gray-900 underline" target="_blank" rel="noreferrer">privacy policy</a>.</>}
+          </span>
+        </label>
+        {errors['terms'] && <p className="text-sm text-red-600">{errors['terms']}</p>}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Contact Information */}
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {locale === 'fr' ? 'Informations de contact' : 'Contact Information'}
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {locale === 'fr' ? 'Adresse email' : 'Email Address'} *
-                </label>
-                <input
-                  type="email"
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors['customer.email'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  data-testid="customer-email"
-                  value={formData.customer.email}
-                  onChange={(e) => handleFieldChange('customer', 'email', e.target.value)}
-                  onBlur={() => handleFieldBlur('customer', 'email')}
-                  placeholder={locale === 'fr' ? 'votre@email.com' : 'your@email.com'}
-                />
-                {errors['customer.email'] && (
-                  <p className="mt-1 text-sm text-red-600">{errors['customer.email']}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {locale === 'fr' ? 'Prénom' : 'First Name'} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors['customer.firstName'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  data-testid="customer-firstname"
-                  value={formData.customer.firstName}
-                  onChange={(e) => handleFieldChange('customer', 'firstName', e.target.value)}
-                  onBlur={() => handleFieldBlur('customer', 'firstName')}
-                />
-                {errors['customer.firstName'] && (
-                  <p className="mt-1 text-sm text-red-600">{errors['customer.firstName']}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {locale === 'fr' ? 'Nom' : 'Last Name'} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                    errors['customer.lastName'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  data-testid="customer-lastname"
-                  value={formData.customer.lastName}
-                  onChange={(e) => handleFieldChange('customer', 'lastName', e.target.value)}
-                  onBlur={() => handleFieldBlur('customer', 'lastName')}
-                />
-                {errors['customer.lastName'] && (
-                  <p className="mt-1 text-sm text-red-600">{errors['customer.lastName']}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {locale === 'fr' ? 'Téléphone' : 'Phone'}
-                </label>
-                <input
-                  type="tel"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  value={formData.customer.phone}
-                  onChange={(e) => handleFieldChange('customer', 'phone', e.target.value)}
-                  placeholder={locale === 'fr' ? '+33 1 23 45 67 89' : '+33 1 23 45 67 89'}
-                />
-              </div>
-            </div>
-          </div>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={confirmedOfAge}
+            onChange={event => {
+              setConfirmedOfAge(event.target.checked)
+              clearFieldError('age')
+            }}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+          />
+          <span className="text-gray-700">
+            {locale === 'fr'
+              ? 'Je confirme avoir 18 ans ou plus et etre autorise a acheter des boissons alcoolisees.'
+              : 'I confirm I am at least 18 years old and allowed to purchase alcoholic beverages.'}
+          </span>
+        </label>
+        {errors['age'] && <p className="text-sm text-red-600">{errors['age']}</p>}
+      </div>
 
-          {/* Shipping Address */}
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {locale === 'fr' ? 'Adresse de livraison' : 'Shipping Address'}
-              </h3>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {locale === 'fr' ? 'Adresse' : 'Street Address'} *
-                </label>
-                {useAutocomplete ? (
-                  <AddressAutocomplete
-                    onAddressSelect={handleAddressSelect}
-                    placeholder={locale === 'fr' ? '123 Rue de la Paix' : '123 Main Street'}
-                    locale={locale}
-                    initialValue={formData.shipping.address}
-                    required
-                    error={errors['shipping.address']}
-                    countries={['FR', 'DE', 'IT', 'ES', 'BE', 'NL', 'AT', 'PT', 'LU', 'GB']}
-                  />
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      required
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                        errors['shipping.address'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                      }`}
-                      data-testid="shipping-address"
-                      value={formData.shipping.address}
-                      onChange={(e) => handleFieldChange('shipping', 'address', e.target.value)}
-                      onBlur={() => handleFieldBlur('shipping', 'address')}
-                      placeholder={locale === 'fr' ? '123 Rue de la Paix' : '123 Main Street'}
-                    />
-                    {errors['shipping.address'] && (
-                      <p className="mt-1 text-sm text-red-600">{errors['shipping.address']}</p>
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-xs text-blue-800">
+        <p className="font-medium">
+          {locale === 'fr' ? 'Paiement securise avec Mollie' : 'Secure payment powered by Mollie'}
+        </p>
+        <p className="mt-1">
+          {locale === 'fr'
+            ? 'Vous serez redirige vers l\'interface Mollie pour finaliser le reglement via carte bancaire, virement ou portefeuille electronique.'
+            : 'You will be redirected to the Mollie checkout to complete payment with your preferred method.'}
+        </p>
+      </div>
+    </div>
+  )
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          {STEP_SEQUENCE.map((step, index) => {
+            const isActive = index === stepIndex
+            const isCompleted = index < stepIndex
+            return (
+              <React.Fragment key={step}>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={classNames(
+                      'flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold',
+                      isCompleted ? 'border-gray-900 bg-gray-900 text-white' : isActive ? 'border-gray-900 text-gray-900' : 'border-gray-300 text-gray-400'
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setUseAutocomplete(true)}
-                      className="text-sm text-blue-600 hover:text-blue-700 underline mt-1"
-                    >
-                      {locale === 'fr' ? 'Utiliser l\'autocomplétion' : 'Use autocomplete'}
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {locale === 'fr' ? 'Ville' : 'City'} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors['shipping.city'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    data-testid="shipping-city"
-                    value={formData.shipping.city}
-                    onChange={(e) => handleFieldChange('shipping', 'city', e.target.value)}
-                    onBlur={() => handleFieldBlur('shipping', 'city')}
-                  />
-                  {errors['shipping.city'] && (
-                    <p className="mt-1 text-sm text-red-600">{errors['shipping.city']}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {locale === 'fr' ? 'Code postal' : 'Postal Code'} *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors['shipping.postalCode'] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                    data-testid="shipping-postal-code"
-                    value={formData.shipping.postalCode}
-                    onChange={(e) => handleFieldChange('shipping', 'postalCode', e.target.value)}
-                    onBlur={() => handleFieldBlur('shipping', 'postalCode')}
-                    placeholder={locale === 'fr' ? '75001' : '75001'}
-                  />
-                  {errors['shipping.postalCode'] && (
-                    <p className="mt-1 text-sm text-red-600">{errors['shipping.postalCode']}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {locale === 'fr' ? 'Pays' : 'Country'} *
-                  </label>
-                  <select
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    data-testid="shipping-country"
-                    value={formData.shipping.country}
-                    onChange={(e) => handleFieldChange('shipping', 'country', e.target.value)}
                   >
-                    <option value="FR">France</option>
-                    <option value="DE">Germany</option>
-                    <option value="IT">Italy</option>
-                    <option value="ES">Spain</option>
-                    <option value="BE">Belgium</option>
-                    <option value="NL">Netherlands</option>
-                  </select>
+                    {index + 1}
+                  </span>
+                  <span className={classNames('font-medium', isActive ? 'text-gray-900' : 'text-gray-500')}>
+                    {stepLabels[step]}
+                  </span>
                 </div>
-              </div>
-            </div>
-          </div>
+                {index < STEP_SEQUENCE.length - 1 && <span className="text-gray-300">/</span>}
+              </React.Fragment>
+            )
+          })}
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-900">{stepLabels[currentStep]}</h2>
+      </div>
 
-          {/* Shipping Options */}
-          <div>
-            <CarrierSelector
-              carriers={carriers}
-              selectedOption={selectedShippingOption}
-              onOptionSelect={handleShippingOptionSelect}
-              loading={loadingCarriers}
-              locale={locale}
-            />
+      {generalError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {generalError}
+        </div>
+      )}
 
-            {/* Shipping Error */}
-            {errors._shipping && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700 text-sm">{errors._shipping}</p>
-              </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        {currentStep === 'address' && renderAddressStep()}
+        {currentStep === 'shipping' && renderShippingStep()}
+        {currentStep === 'payment' && renderPaymentStep()}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-gray-200 pt-6 sm:flex-row sm:justify-between">
+        {stepIndex > 0 && (
+          <button
+            type="button"
+            onClick={goToPreviousStep}
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            {locale === 'fr' ? 'Retour' : 'Back'}
+          </button>
+        )}
+
+        {currentStep !== 'payment' && (
+          <button
+            type="button"
+            onClick={goToNextStep}
+            className="inline-flex items-center justify-center rounded-md bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            {currentStep === 'address'
+              ? (locale === 'fr' ? 'Continuer vers la livraison' : 'Continue to shipping')
+              : (locale === 'fr' ? 'Continuer vers le paiement' : 'Continue to payment')}
+          </button>
+        )}
+
+        {currentStep === 'payment' && (
+          <button
+            type="button"
+            data-testid="proceed-to-payment-button"
+            onClick={handlePlaceOrder}
+            disabled={isProcessing}
+            className={classNames(
+              'inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-medium text-white',
+              isProcessing ? 'bg-gray-400' : 'bg-gray-900 hover:bg-gray-800'
             )}
-          </div>
-
-          {/* Payment */}
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {locale === 'fr' ? 'Paiement' : 'Payment'}
-              </h3>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-6">
-              <label className="flex items-center p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                <input
-                  type="radio"
-                  name="payment"
-                  value="mollie"
-                  checked={formData.payment.method === 'mollie'}
-                  onChange={(e) => handleFieldChange('payment', 'method', e.target.value)}
-                  className="mr-4 text-blue-600"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">
-                      {locale === 'fr' ? 'Paiement sécurisé' : 'Secure Payment'}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <img src="/images/payment-icons/visa.svg" alt="Visa" className="h-6 w-auto" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
-                      <img src="/images/payment-icons/mastercard.svg" alt="Mastercard" className="h-6 w-auto" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
-                      <img src="/images/payment-icons/paypal.svg" alt="PayPal" className="h-6 w-auto" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {locale === 'fr' ? 'Carte bancaire, PayPal, virement bancaire et autres moyens de paiement' : 'Credit card, PayPal, bank transfer and other payment methods'}
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Terms */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                required
-                className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
-                data-testid="terms-checkbox"
-              />
-              <div className="text-sm">
-                <p className="text-gray-700">
-                  {locale === 'fr' ? (
-                    <span>
-                      J'accepte les <a href="/terms" target="_blank" className="text-blue-600 hover:text-blue-700 underline">conditions générales</a> et la <a href="/privacy" target="_blank" className="text-blue-600 hover:text-blue-700 underline">politique de confidentialité</a>
-                    </span>
-                  ) : (
-                    <span>
-                      I agree to the <a href="/terms" target="_blank" className="text-blue-600 hover:text-blue-700 underline">terms and conditions</a> and <a href="/privacy" target="_blank" className="text-blue-600 hover:text-blue-700 underline">privacy policy</a>
-                    </span>
-                  )}
-                </p>
-                <p className="text-gray-500 mt-1">
-                  {locale === 'fr' ? 'Vous devez avoir 18 ans ou plus pour commander du vin.' : 'You must be 18 or older to order wine.'}
-                </p>
-              </div>
-            </label>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="flex-1 bg-white text-gray-700 border border-gray-300 px-6 py-4 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              {locale === 'fr' ? 'Retour au panier' : 'Back to Cart'}
-            </button>
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="flex-2 bg-gray-900 text-white px-8 py-4 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-              data-testid="proceed-to-payment-button"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>{locale === 'fr' ? 'Traitement...' : 'Processing...'}</span>
-                </>
-              ) : (
-                <>
-                  <span>{locale === 'fr' ? 'Finaliser la commande' : 'Complete Order'}</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+          >
+            {isProcessing
+              ? (locale === 'fr' ? 'Traitement en cours...' : 'Processing...')
+              : (locale === 'fr' ? 'Proceder au paiement securise' : 'Proceed to secure payment')}
+          </button>
+        )}
       </div>
     </div>
   )
 }
+

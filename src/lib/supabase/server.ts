@@ -581,15 +581,13 @@ export const createOrder = async (orderData: {
 }
 
 export const updateOrder = async (orderId: string, updates: {
-  sendcloud_order_id?: string
-  sendcloud_integration_id?: number
-  sendcloud_parcel_id?: number
-  sendcloud_tracking_number?: string
-  sendcloud_tracking_url?: string
-  sendcloud_status?: string
-  sendcloud_carrier?: string
-  sendcloud_label_url?: string
   status?: string
+  tracking_number?: string
+  tracking_url?: string
+  carrier?: string
+  shipped_at?: string
+  delivered_at?: string
+  notes?: string
 }) => {
   return safeQuery(async (supabase) => {
     const { data: order, error } = await supabase

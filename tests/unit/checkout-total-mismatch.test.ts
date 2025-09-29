@@ -17,8 +17,8 @@ describe('Checkout Total Mismatch - Root Cause Analysis', () => {
   ]
 
   const mockShippingOption = {
-    carrier_code: 'sendcloud',
-    carrier_name: 'Sendcloud',
+    carrier_code: 'colissimo',
+    carrier_name: 'Colissimo',
     option_code: 'standard',
     option_name: 'Standard Delivery',
     price: 895, // €8.95
