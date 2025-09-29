@@ -211,15 +211,29 @@ export async function POST(request: NextRequest) {
 
     // Generate shipping_method from shipping_option for database requirement
     let shippingMethod = 'Standard shipping' // Default fallback
-    if (orderData.shipping_option && orderData.shipping_option.carrier_name) {
-      const carrier = orderData.shipping_option.carrier_name
-      const service = orderData.shipping_option.option_name || orderData.shipping_option.service || 'standard'
-      shippingMethod = `${carrier} - ${service}`
+
+    // More robust shipping method generation with proper validation
+    if (orderData.shipping_option) {
+      const option = orderData.shipping_option
+      if (option.carrier_name && typeof option.carrier_name === 'string' && option.carrier_name.trim()) {
+        const carrier = option.carrier_name.trim()
+        const service = (option.option_name || option.service || 'standard').toString().trim()
+        shippingMethod = `${carrier} - ${service}`
+      } else if (option.name && typeof option.name === 'string' && option.name.trim()) {
+        // Fallback to option name if carrier name is not available
+        shippingMethod = option.name.trim()
+      }
+    }
+
+    // Ensure shipping_method is never empty or null
+    if (!shippingMethod || shippingMethod.trim() === '') {
+      shippingMethod = 'Standard shipping'
     }
 
     console.log('🚚 Shipping method generated:', {
       shipping_option: orderData.shipping_option,
-      shipping_method: shippingMethod
+      shipping_method: shippingMethod,
+      is_fallback: shippingMethod === 'Standard shipping'
     })
 
     // Create order in database
