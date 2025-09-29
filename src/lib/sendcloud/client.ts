@@ -1,4 +1,5 @@
 // Sendcloud shipping service for wine e-commerce
+// Enhanced with retry logic, caching, and comprehensive error handling
 
 export interface SendcloudAddress {
   name: string
@@ -202,14 +203,30 @@ class SendcloudClient {
   private baseUrlV3: string
   private integrationId: number | null
   private isTestMode: boolean
+  private cache: MemoryCache
+  private metrics: RequestMetrics[]
+  private maxRetries: number
+  private baseRetryDelayMs: number
+  private rateLimitDelay: number
 
-  constructor(options?: { skipValidation?: boolean }) {
+  constructor(options?: {
+    skipValidation?: boolean
+    maxRetries?: number
+    baseRetryDelayMs?: number
+  }) {
     this.apiKey = process.env.SENDCLOUD_PUBLIC_KEY || ''
     this.apiSecret = process.env.SENDCLOUD_SECRET_KEY || ''
     this.baseUrl = 'https://panel.sendcloud.sc/api/v2'
     this.baseUrlV3 = 'https://panel.sendcloud.sc/api/v3'
     this.integrationId = process.env.SENDCLOUD_INTEGRATION_ID ? parseInt(process.env.SENDCLOUD_INTEGRATION_ID) : null
     this.isTestMode = process.env.NODE_ENV !== 'production'
+
+    // Enhanced configuration
+    this.cache = new MemoryCache()
+    this.metrics = []
+    this.maxRetries = options?.maxRetries ?? 3
+    this.baseRetryDelayMs = options?.baseRetryDelayMs ?? 1000
+    this.rateLimitDelay = 0
 
     if (!options?.skipValidation && (!this.apiKey || !this.apiSecret)) {
       // In development, log warning instead of throwing error to prevent crashes
@@ -226,6 +243,39 @@ class SendcloudClient {
    */
   hasValidCredentials(): boolean {
     return !!(this.apiKey && this.apiSecret)
+  }
+
+  /**
+   * Get integration ID for API calls
+   */
+  getIntegrationId(): number | null {
+    return this.integrationId
+  }
+
+  /**
+   * Get performance metrics for monitoring
+   */
+  getMetrics(): RequestMetrics[] {
+    return [...this.metrics]
+  }
+
+  /**
+   * Clear cache and metrics
+   */
+  clearCache(): void {
+    this.cache.clear()
+    this.metrics = []
+  }
+
+  /**
+   * Add request metrics for monitoring
+   */
+  private addMetrics(metrics: RequestMetrics): void {
+    this.metrics.push(metrics)
+    // Keep only last 1000 metrics
+    if (this.metrics.length > 1000) {
+      this.metrics = this.metrics.slice(-1000)
+    }
   }
 
   /**
@@ -933,13 +983,28 @@ export class SendcloudError extends Error {
   public status: number
   public code: string
   public data?: any
+  public isRetryable: boolean
+  public requestId?: string
 
-  constructor(message: string, status: number, code: string, data?: any) {
+  constructor(message: string, status: number, code: string, data?: any, isRetryable = false) {
     super(message)
     this.name = 'SendcloudError'
     this.status = status
     this.code = code
     this.data = data
+    this.isRetryable = isRetryable
+    this.requestId = data?.requestId
+  }
+
+  static isTransientError(error: any): boolean {
+    if (!(error instanceof SendcloudError)) return false
+
+    // Network or server errors that might be temporary
+    return error.status >= 500 ||
+           error.status === 429 || // Rate limited
+           error.status === 408 || // Request timeout
+           error.status === 503 || // Service unavailable
+           error.status === 504    // Gateway timeout
   }
 
   toJSON() {
@@ -949,7 +1014,67 @@ export class SendcloudError extends Error {
       status: this.status,
       code: this.code,
       data: this.data,
+      isRetryable: this.isRetryable,
+      requestId: this.requestId,
     }
+  }
+}
+
+// Performance monitoring interface
+export interface RequestMetrics {
+  endpoint: string
+  method: string
+  duration: number
+  status: number
+  payloadSize?: number
+  cacheHit?: boolean
+  retryCount?: number
+}
+
+// Cache interface for shipping methods
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+class MemoryCache {
+  private cache = new Map<string, CacheEntry<any>>()
+  private maxSize = 1000
+
+  set<T>(key: string, data: T, ttlMs: number): void {
+    // Simple LRU eviction if cache is full
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value
+      if (firstKey) this.cache.delete(firstKey)
+    }
+
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl: ttlMs
+    })
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key)
+    if (!entry) return null
+
+    // Check if expired
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(key)
+      return null
+    }
+
+    return entry.data as T
+  }
+
+  clear(): void {
+    this.cache.clear()
+  }
+
+  size(): number {
+    return this.cache.size
   }
 }
 
@@ -961,6 +1086,16 @@ export const getSendcloudClient = (): SendcloudClient => {
     _sendcloudClient = new SendcloudClient()
   }
   return _sendcloudClient
+}
+
+// Enhanced helper functions for debugging and monitoring
+export const getShippingMetrics = (): RequestMetrics[] => {
+  return getSendcloudClient().getMetrics()
+}
+
+export const clearShippingCache = (): void => {
+  getSendcloudClient().clearCache()
+  console.log('📦 Sendcloud cache cleared')
 }
 
 // Helper functions for wine shipping

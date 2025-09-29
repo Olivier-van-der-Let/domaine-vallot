@@ -521,6 +521,7 @@ export const createOrder = async (orderData: {
     product_id: string
     quantity: number
     unit_price: number
+    product_snapshot: any
   }>
   subtotal: number
   vat_amount: number
@@ -553,13 +554,14 @@ export const createOrder = async (orderData: {
 
     if (orderError) throw orderError
 
-    // Insert order items
+    // Insert order items with product snapshots
     const orderItems = orderData.items.map(item => {
       const lineTotal = item.quantity * item.unit_price
       const vatAmount = Math.round((lineTotal * orderData.vat_rate) * 100) / 100 // Round to 2 decimal places for euros
       return {
         order_id: order.id,
         product_id: item.product_id,
+        product_snapshot: item.product_snapshot, // Include immutable product snapshot
         quantity: item.quantity,
         unit_price_eur: item.unit_price,
         vat_rate: orderData.vat_rate * 100, // Convert decimal to percentage for DB storage
@@ -574,6 +576,30 @@ export const createOrder = async (orderData: {
 
     if (itemsError) throw itemsError
 
+    return { data: order, error: null }
+  })
+}
+
+export const updateOrder = async (orderId: string, updates: {
+  sendcloud_order_id?: string
+  sendcloud_integration_id?: number
+  sendcloud_parcel_id?: number
+  sendcloud_tracking_number?: string
+  sendcloud_tracking_url?: string
+  sendcloud_status?: string
+  sendcloud_carrier?: string
+  sendcloud_label_url?: string
+  status?: string
+}) => {
+  return safeQuery(async (supabase) => {
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update(updates)
+      .eq('id', orderId)
+      .select()
+      .single()
+
+    if (error) throw error
     return { data: order, error: null }
   })
 }
