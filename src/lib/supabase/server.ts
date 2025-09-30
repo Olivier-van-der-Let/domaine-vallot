@@ -530,6 +530,7 @@ export const createOrder = async (orderData: {
   total_amount: number
   payment_method?: string
   shipping_method: string // Required shipping method for database
+  shipping_option: any // Required structured shipping option data {code, name, ...}
   status?: string
 }) => {
   return safeQuery(async (supabase) => {
@@ -546,6 +547,7 @@ export const createOrder = async (orderData: {
         total_eur: orderData.total_amount,
         payment_method: orderData.payment_method || 'mollie',
         shipping_method: orderData.shipping_method, // Add required shipping_method field
+        shipping_option: orderData.shipping_option, // Add required structured shipping option
         status: orderData.status || 'pending',
         vat_rate: orderData.vat_rate * 100 // Convert decimal rate (0.20) to percentage (20.00) for DB storage
       })

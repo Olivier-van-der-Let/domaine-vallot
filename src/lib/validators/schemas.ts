@@ -427,17 +427,17 @@ const shippingCharacteristicsSchema = z.object({
   last_mile: z.string()
 })
 
-// Shipping option schema for orders
+// Shipping option schema for orders - minimal required fields
 const shippingOptionSchema = z.object({
-  code: z.string(),
-  name: z.string(),
-  carrier_code: z.string(),
-  carrier_name: z.string(),
-  price: z.number().min(0),
-  currency: z.string(),
+  code: z.string().min(1, 'Shipping option code is required'),
+  name: z.string().min(1, 'Shipping option name is required'),
+  carrier_code: z.string().optional(),
+  carrier_name: z.string().optional(),
+  price: z.number().min(0).optional(),
+  currency: z.string().optional(),
   delivery_time: z.string().optional(),
   service_point_required: z.boolean().optional(),
-  characteristics: shippingCharacteristicsSchema
+  characteristics: shippingCharacteristicsSchema.optional()
 })
 
 // Order schemas
@@ -458,7 +458,7 @@ export const orderSchema = z.object({
   shippingCost: z.number().min(0, 'Shipping cost cannot be negative'),
   totalAmount: z.number().min(1, 'Total amount must be positive'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
-  shipping_option: shippingOptionSchema.optional(),
+  shipping_option: shippingOptionSchema, // Now required, not optional
   specialInstructions: z.string().max(500, 'Special instructions too long').optional(),
   giftMessage: z.string().max(200, 'Gift message too long').optional()
 })

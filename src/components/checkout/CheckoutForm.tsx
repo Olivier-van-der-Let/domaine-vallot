@@ -370,8 +370,14 @@ export default function CheckoutForm({
       totalAmount: totals.totalAmount,
       paymentMethod: 'mollie',
       shipping_option: {
-        ...selectedShipping.option,
-        characteristics: selectedShipping.characteristics
+        code: selectedShipping.option.option_code,
+        name: selectedShipping.option.option_name,
+        carrier_code: selectedShipping.option.carrier_code,
+        carrier_name: selectedShipping.option.carrier_name,
+        price: selectedShipping.option.price,
+        currency: selectedShipping.option.currency,
+        delivery_time: selectedShipping.option.delivery_time,
+        service_point_required: selectedShipping.option.service_point_required
       },
       specialInstructions: shippingAddress.notes || undefined,
       locale

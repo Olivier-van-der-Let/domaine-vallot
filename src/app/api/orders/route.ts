@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
       customer_id: user.id,
       shipping_address: orderData.shippingAddress,
       billing_address: orderData.billingAddress,
+      shipping_option: orderData.shipping_option, // Pass validated shipping option
       items: orderItems.map(item => {
         // Find the corresponding cart item to get product details for snapshot
         const cartItem = cartItems.find(ci => ci.product_id === item.product_id)
