@@ -77,14 +77,12 @@ export function LoginForm({
 
       setLoginSuccess(true)
 
-      // Brief delay to show success message
-      setTimeout(() => {
-        if (onSuccess) {
-          onSuccess()
-        } else {
-          router.push(redirect)
-        }
-      }, 1000)
+      // Immediate redirect - no delay needed
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        router.push(redirect)
+      }
     } catch (err) {
       setAuthError('An unexpected error occurred')
       console.error('Login error:', err)

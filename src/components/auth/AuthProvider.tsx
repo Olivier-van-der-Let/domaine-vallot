@@ -366,14 +366,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (event === 'SIGNED_IN') {
         console.log('✅ User signed in successfully')
-        // Redirect to intended page or dashboard after short delay for state sync
-        setTimeout(() => {
-          const redirectTo = new URLSearchParams(window.location.search).get('redirect')
-          if (redirectTo) {
-            console.log('🔄 Redirecting to:', redirectTo)
-            router.push(redirectTo)
-          }
-        }, 100)
+        // Don't redirect here - let the login form component handle navigation
+        // The form knows the user's intended destination better
       }
 
       if (event === 'TOKEN_REFRESHED') {
@@ -404,7 +398,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                   pathname?.includes('/orders')
 
       // Redirect authenticated users away from auth pages
-      if (user && isAuthRoute) {
+      // Don't redirect if currently signing in - let the LoginForm handle navigation
+      if (user && isAuthRoute && !signingIn) {
         // If user was trying to access admin and is admin, redirect to admin
         const redirectParam = new URLSearchParams(window.location.search).get('redirect')
         if (redirectParam?.includes('/admin') && isAdmin) {
@@ -436,7 +431,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return
       }
     }
-  }, [user, loading, isAdmin, pathname, router])
+  }, [user, loading, isAdmin, pathname, router, signingIn])
 
   const value = {
     user,
